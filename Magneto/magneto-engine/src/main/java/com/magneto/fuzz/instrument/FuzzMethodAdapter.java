@@ -11,6 +11,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 public class FuzzMethodAdapter extends GeneratorAdapter implements Opcodes {
 
+    private final String className;
     private final int methodAccess;
     private final String methodName;
     private final String methodDesc;
@@ -25,6 +26,7 @@ public class FuzzMethodAdapter extends GeneratorAdapter implements Opcodes {
 
     public FuzzMethodAdapter(int api, @NonNull MethodVisitor methodVisitor, String className, int methodAccess, String methodName, String methodDesc, String superName) {
         super(api, methodVisitor, methodAccess, methodName, methodDesc);
+        this.className = className;
         this.methodAccess = methodAccess;
         this.methodName = methodName;
         this.methodSignature = MethodUtil.getMethodSignature(className, methodName, getReturnType(), getArgumentTypes());
@@ -53,7 +55,8 @@ public class FuzzMethodAdapter extends GeneratorAdapter implements Opcodes {
             if (hasSetStartLabel) {
                 super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
             } else {
-                if (opcode == INVOKESPECIAL && "<init>".equals(name) && superName.equals(owner)) {
+                if (opcode == INVOKESPECIAL && "<init>".equals(name) &&
+                        (owner.equals(superName) || owner.equals(className))) {
                     super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
                     super.visitLabel(startLabel);
                     this.hasSetStartLabel = true;
@@ -68,7 +71,7 @@ public class FuzzMethodAdapter extends GeneratorAdapter implements Opcodes {
 
     @Override
     public void visitMaxs(int maxStack, int maxLocals) {
-        if (mv != null) {
+        if (mv != null && hasSetStartLabel) {
             // (1) endLabel
             super.visitLabel(endLabel);
 
@@ -82,10 +85,9 @@ public class FuzzMethodAdapter extends GeneratorAdapter implements Opcodes {
 
             // (4) visitTryCatchBlock
             super.visitTryCatchBlock(startLabel, endLabel, handlerLabel, "java/lang/Throwable");
-
-            // (5) must visit at end
-            super.visitMaxs(maxStack, maxLocals);
         }
+        // (5) must visit at end
+        super.visitMaxs(maxStack, maxLocals);
     }
 
     @Override
