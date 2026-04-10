@@ -65,12 +65,19 @@ public class JSONReportGenerator extends ReportGenerator {
 
             // process the method call chain
             MethodCallChain fuzzMethodCallChain = fuzzChainResultWrapper.getFuzzMethodCallChain();
-            List<String> methodCallList = fuzzMethodCallChain.forwardChainList().stream()
+
+                List<String> methodCallList = fuzzMethodCallChain.forwardChainList().stream()
                     .map(MethodCall::getMethodSignature)
                     .collect(Collectors.toList());
 
-            JSONFuzzChainResultWrapper jsonFuzzChainResultWrapper = new JSONFuzzChainResultWrapper();
-            jsonFuzzChainResultWrapper.setMethodCallList(methodCallList);
+                // 新增：每一步的复杂度和分支分数
+                List<String> stepScores = fuzzMethodCallChain.calculateStepScores().stream()
+                    .map(Object::toString)
+                    .collect(Collectors.toList());
+
+                JSONFuzzChainResultWrapper jsonFuzzChainResultWrapper = new JSONFuzzChainResultWrapper();
+                jsonFuzzChainResultWrapper.setMethodCallList(methodCallList);
+                jsonFuzzChainResultWrapper.setStepScores(stepScores);
 
             // process fuzz chain result
             Map<String, JSONFuzzChainResult> jsonFuzzChainResultMap = new HashMap<>();

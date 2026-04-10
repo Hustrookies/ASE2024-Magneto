@@ -75,9 +75,15 @@ public class JsonOutputHandler implements OutputHandler {
                 vulArray.add(entry.getKey());
             }
 
+            // 新增：输出每一步的复杂度和分支分数
+            List<String> stepScores = methodCallChain.calculateStepScores().stream()
+                    .map(Object::toString)
+                    .collect(java.util.stream.Collectors.toList());
+
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("chain", chainArray);
             jsonObject.put("vuls", vulArray);
+            jsonObject.put("stepScores", stepScores);
             jsonArray.add(jsonObject);
         }
 

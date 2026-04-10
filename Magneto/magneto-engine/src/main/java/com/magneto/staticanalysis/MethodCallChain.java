@@ -1,5 +1,7 @@
 package com.magneto.staticanalysis;
-
+import com.magneto.staticanalysis.dataflow.ComplexityAnalyzer;
+import com.magneto.staticanalysis.callgraph.BranchAnalyzer;
+import java.io.Serializable;
 import com.magneto.testcase.model.TestcaseUnit;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -90,5 +92,42 @@ public class MethodCallChain {
         }
         return sb.toString();
     }
+
+    /**
+    * 调用链每一步的分数数据结构
+    */
+    public static class StepScore implements Serializable {
+            public final MethodCall caller;
+            public final MethodCall callee;
+            public final int complexityScore;
+            public final int branchScore;
+
+            public StepScore(MethodCall caller, MethodCall callee, int complexityScore, int branchScore) {
+                this.caller = caller;
+                this.callee = callee;
+                this.complexityScore = complexityScore;
+                this.branchScore = branchScore;
+            }
+            @Override
+            public String toString() {
+                return String.format("caller:%s -> callee:%s | complexity: %d, branch: %d", caller, callee, complexityScore, branchScore);
+            }
+    }
+
+    /**
+     * 计算调用链每一步的复杂度分数和分支分数
+     */
+    public List<StepScore> calculateStepScores() {
+        List<StepScore> scores = new ArrayList<>();
+        for (int i = 1; i < methodCallList.size(); i++) {
+            MethodCall fi = methodCallList.get(i);
+            MethodCall fi_1 = methodCallList.get(i - 1);
+            int complexityScore = ComplexityAnalyzer.compute(fi_1, fi);
+            int branchScore = BranchAnalyzer.compute(fi_1, fi);
+            scores.add(new StepScore(fi_1, fi, complexityScore, branchScore));
+        }
+        return scores;
+    }
+
 }
 

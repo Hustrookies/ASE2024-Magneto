@@ -16,4 +16,6 @@ public class JSONFuzzChainResultWrapper {
     @JSONField(name = "fuzzResultMap")
     private Map<String, JSONFuzzChainResult> fuzzResultMap; // cve name ---> fuzz chain result
 
+    @JSONField(name = "stepScores")
+    private List<String> stepScores; // 每一步的复杂度和分支分数描述
 }
