@@ -59,3 +59,28 @@ optional arguments:
 Note: If `[PROJECT_PATH]` is not specified, the tool defaults to analyzing the demo project(i.e., `Magneto/test-tool-demo`). If `[OUTPUT_DIR]` is not specified, the tool saves the results to the `output` folder. By default, the tool does not skip the fuzzing phase. If `[VUL_NAME]` is not specified, the tool analyzes all vulnerabilities in the vulnerability database.
 
 If you encounter any other issues, please do not hesitate to contact us.
+
+### 源码作用
+- asm/：与字节码操作和分析相关，通常用于插桩、方法追踪等底层操作。
+
+- ast/：抽象语法树相关，负责源代码结构的解析与分析。
+
+- config/：全局配置、项目属性、参数管理等相关代码。
+
+- dependency/：依赖关系与依赖树的解析、管理和处理。
+
+- finder/：用于查找类、方法、调用关系等信息的工具和逻辑。
+
+- fuzz/：模糊测试（fuzzing）相关的核心逻辑与实现。
+
+- gpt/：与 LLM（如 GPT）交互、生成提示、处理模型输出等相关代码。
+
+- instrument/：字节码插桩相关，实现运行时监控和数据收集。
+
+- report/：结果报告的生成、格式化与输出。
+
+- staticanalysis/：静态分析相关，包括漏洞检测、可达性分析等。
+
+- testcase/：测试用例的生成、管理与执行。
+
+- util/：通用工具类，提供各种辅助功能。
