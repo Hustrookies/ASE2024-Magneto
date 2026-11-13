@@ -1,0 +1,11 @@
+      5 [WARNING] /root/workspace/bishe/ASE2024-Magneto/Magneto/magneto-engine/src/main/java/com/magneto/util/ReflectionUtil.java:[5,19] sun.reflect.ReflectionFactory is internal proprietary API and may be removed in a future release
+      4 [WARNING] 
+      1 [WARNING] bootstrap class path not set in conjunction with -source 1.6
+      1 [WARNING] Some problems were encountered while building the effective model for com:test-tool-demo:jar:1.6
+      1 [WARNING] Replacing pre-existing project main-artifact file: /root/workspace/bishe/ASE2024-Magneto/Magneto/magneto-engine/target/archive-tmp/magneto-engine-1.0.jar
+      1 [WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+      1 [WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+      1 [WARNING] Configuration option 'appendAssemblyId' is set to false.
+      1 [WARNING] Artifact: com:magneto-engine:jar:1.0 references the same file as the assembly destination file. Moving it to a temporary location for inclusion.
+      1 [WARNING] /root/workspace/bishe/ASE2024-Magneto/Magneto/magneto-engine/src/main/java/com/magneto/util/ReflectionUtil.java:[67,29] sun.reflect.ReflectionFactory is internal proprietary API and may be removed in a future release
+      1 [WARNING] 'build.plugins.plugin.version' for org.apache.maven.plugins:maven-scm-publish-plugin is missing. @ line 90, column 15

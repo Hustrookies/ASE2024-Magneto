@@ -97,3 +97,5 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+# local run artifacts (S0+ baseline/projection runs)
+runs/
