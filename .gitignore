@@ -99,3 +99,7 @@ Desktop.ini
 $RECYCLE.BIN/
 # local run artifacts (S0+ baseline/projection runs)
 runs/
+
+# ...but the S0 baseline snapshot output IS tracked
+!docs/baseline-snapshot/output/
+!docs/baseline-snapshot/output/**
