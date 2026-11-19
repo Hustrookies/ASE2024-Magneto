@@ -19,8 +19,8 @@ public class ChainProjectionService {
 
     private final Map<MethodCallChain, ChainProjection> cache = new LinkedHashMap<>();
 
-    public ChainProjectionService() {
-        this(new ProjectionAnalyzer());
+    public ChainProjectionService(int maxDepth) {
+        this(new ProjectionAnalyzer(maxDepth));
     }
 
     public ChainProjectionService(ProjectionAnalyzer analyzer) {

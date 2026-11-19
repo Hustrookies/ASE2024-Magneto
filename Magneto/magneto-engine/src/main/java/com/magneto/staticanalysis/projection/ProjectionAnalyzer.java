@@ -6,9 +6,13 @@ import com.magneto.staticanalysis.callgraph.BranchAnalyzer;
 import com.magneto.staticanalysis.dataflow.ComplexityAnalyzer;
 import com.magneto.staticanalysis.dataflow.MethodParameterMappingAnalysis;
 import com.magneto.staticanalysis.taint.TaintField;
+import com.magneto.staticanalysis.taint.TaintFlowAnalysis;
 import com.magneto.staticanalysis.taint.TaintObject;
 import com.magneto.staticanalysis.taint.TaintParam;
 import lombok.extern.slf4j.Slf4j;
+import soot.Body;
+import soot.Unit;
+import soot.toolkits.graph.ExceptionalUnitGraph;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,12 +24,18 @@ import java.util.TreeMap;
 /**
  * 约束投影分析器：对调用链每个步骤 ⟨caller Fᵢ, callee Fᵢ₋₁⟩ 做参数关联分类（SPEC 3.2）。
  *
- * S1 骨架：分类恒为 UNKNOWN（全断点），但已完整走通「链 → 逐步骤 → StepProjection」，
- * 并复用现有 MethodParameterMappingAnalysis / ComplexityAnalyzer / BranchAnalyzer 填好
- * taintObjectMap 摘要与分数。R1—R5 的实际判定在 S2 填入 classifyStep。
+ * 分类逻辑在 StepClassifier 里，只吃 Soot 对象；本类负责 MethodCall → Body/调用点的接线、
+ * 多调用点取最劣，以及复用现有 MethodParameterMappingAnalysis / ComplexityAnalyzer /
+ * BranchAnalyzer 填 taintObjectMap 摘要与分数。
  */
 @Slf4j
 public class ProjectionAnalyzer {
+
+    private final int maxDepth;
+
+    public ProjectionAnalyzer(int maxDepth) {
+        this.maxDepth = maxDepth;
+    }
 
     /**
      * 保守兜底步骤（SPEC 3.2 R5）：无法解析时一律 UNKNOWN + 断点。
@@ -61,10 +71,42 @@ public class ProjectionAnalyzer {
     }
 
     /**
-     * S1 骨架：恒为 UNKNOWN。S2 在此实现实参 def 链后向溯源与 R1—R5 判定。
+     * R1—R5 判定。任何异常都退回 UNKNOWN 断点——分类器出错绝不能变成「跳过验证」。
      */
     protected StepProjection classifyStep(int stepIndex, MethodCall caller, MethodCall callee) {
-        return unresolvedStep(stepIndex, caller.getMethodSignature(), callee.getMethodSignature());
+        StepProjection step = unresolvedStep(stepIndex, caller.getMethodSignature(), callee.getMethodSignature());
+
+        try {
+            Body body = caller.getSootMethod().retrieveActiveBody();
+            List<Unit> callSites = TaintFlowAnalysis.findTriggeredMethodUnit(
+                    new ExceptionalUnitGraph(body), callee.getSootMethod());
+
+            if (callSites.isEmpty()) {
+                step.setEvidence("未在 caller 中定位到 callee 调用点: " + callee.getMethodSignature());
+                return step;
+            }
+
+            StepTrace worst = null;
+            List<String> evidence = new ArrayList<>();
+            for (Unit callSite : callSites) {
+                StepTrace trace = StepClassifier.classify(body, callSite, maxDepth);
+                evidence.add("--- call site: " + callSite + " ---\n" + trace.getEvidence());
+                if (worst == null || StepClassifier.worse(worst.getKind(), trace.getKind()) != worst.getKind()) {
+                    worst = trace;
+                }
+            }
+
+            // 多调用点取最劣；证据保留全部调用点，便于人工核对
+            step.setKind(worst.getKind());
+            step.getParamProjections().addAll(worst.getParamProjections());
+            step.setEvidence(String.join("\n", evidence));
+        } catch (Throwable t) {
+            log.warn("ProjectionClassifyError: caller={} callee={} reason={}",
+                    caller.getMethodSignature(), callee.getMethodSignature(), t.toString());
+            step.setKind(ProjectionKind.UNKNOWN);
+            step.setEvidence("分类异常，保守判为断点: " + t);
+        }
+        return step;
     }
 
     /**

@@ -161,9 +161,11 @@ for 每个步骤 i（现有循环 L110）:
 3. 在 `Evaluation_Data` 真实链上标注 ≥3 条链的人工期望分类（至少含：1 条纯透传链、1 条含复杂构造链、1 条含分支调用链），与工具输出比对。
 
 **验收标准：**
-- [ ] fixture 单测全绿（R1—R4 各至少 1 个用例，含负例：UNKNOWN 兜底）；
-- [ ] ≥3 条真实链分类与人工标注一致率 100%（保守规则允许把 SIMPLE_DERIVATION 判成 UNKNOWN，不允许反向错判——即**不允许把断点判成非断点**）；
-- [ ] 分类结果写入 `projection.json` 且 evidence 字段含关键 Jimple 语句。
+- [x] fixture 单测全绿（R1—R4 各至少 1 个用例，含负例：UNKNOWN 兜底）；*8 个 fixture + 21 个断言全绿；4 次变异测试（强制 PASSTHROUGH / 去掉 StringBuilder 特例 / 去掉守卫升级 / 深度耗尽改 PASSTHROUGH）均被捕获，证明非空过*
+- [x] ≥3 条真实链分类与人工标注一致率 100%（保守规则允许把 SIMPLE_DERIVATION 判成 UNKNOWN，不允许反向错判——即**不允许把断点判成非断点**）；*标注 chain-0（纯透传）/ chain-2（含分支）/ chain-3（含复杂构造）共 10 步，断点判定 10/10 一致，红线违规 0 例，详见 [docs/projection-annotation.md](docs/projection-annotation.md)*
+- [x] 分类结果写入 `projection.json` 且 evidence 字段含关键 Jimple 语句。
+
+**实测补充：** 全量 28 步断点率 71%（PASSTHROUGH 1 / SIMPLE_DERIVATION 7 / CONDITIONAL_SELECT 7 / COMPLEX_CONSTRUCTION 3 / UNKNOWN 10），低于 §5 的 80% 降级阈值，无需退回二分类。UNKNOWN 的 10 例去重后 4 种原因，全部为合法 R5（接口分发 `Map.get`、任意方法返回值、深度耗尽）。
 
 ### S3 值级投影与约束生成（11/17—11/18，~1 天）
 

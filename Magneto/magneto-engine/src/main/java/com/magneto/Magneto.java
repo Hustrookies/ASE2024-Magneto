@@ -246,7 +246,7 @@ public class Magneto {
 
         TimeUtil.runTask(() -> {
             VulCallChainFinder vulCallChainFinder = projectContext.getVulCallChainFinder();
-            ChainProjectionService projectionService = new ChainProjectionService();
+            ChainProjectionService projectionService = new ChainProjectionService(configProperty.getMaxInterAnalysisScope());
             projectContext.setChainProjectionService(projectionService);
 
             List<ChainProjection> projections = projectionService.analyzeAll(vulCallChainFinder.getPuringVulCallChainList());

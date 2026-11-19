@@ -29,7 +29,7 @@ public abstract class TaintFlowAnalysis {
 
     public abstract Set<TaintObject> doAnalysis();
 
-    private boolean checkIsAssignable(@NonNull SootClass targetClass, @NonNull SootClass triggeredClass) {
+    private static boolean checkIsAssignable(@NonNull SootClass targetClass, @NonNull SootClass triggeredClass) {
         if (targetClass.getName().equals(triggeredClass.getName()) || targetClass.implementsInterface(triggeredClass.getName())) {
             return true;
         }
@@ -53,7 +53,7 @@ public abstract class TaintFlowAnalysis {
         flowAbstractionSet.clear();
     }
 
-    protected boolean checkIsTriggeredMethod(SootMethod triggeredMethod, SootMethod invokeMethod) {
+    public static boolean checkIsTriggeredMethod(SootMethod triggeredMethod, SootMethod invokeMethod) {
         if (triggeredMethod.getSignature().equals(invokeMethod.getSignature())) {
             return true;
         } else if (triggeredMethod.getSubSignature().equals(invokeMethod.getSubSignature())
@@ -65,7 +65,7 @@ public abstract class TaintFlowAnalysis {
     }
 
     // find triggered method unit
-    protected List<Unit> findTriggeredMethodUnit(@NonNull UnitGraph graph, @NonNull SootMethod triggeredMethod) {
+    public static List<Unit> findTriggeredMethodUnit(@NonNull UnitGraph graph, @NonNull SootMethod triggeredMethod) {
         List<Unit> targetUnitList = new ArrayList<>();
         for (Unit unit : graph) {
             Stmt s = (Stmt) unit;
