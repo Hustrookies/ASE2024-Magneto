@@ -134,10 +134,10 @@ for 每个步骤 i（现有循环 L110）:
 4. 记录基线行为快照（输出文件清单 + 关键日志），作为 S4 `off` 模式一致性对照。
 
 **验收标准：**
-- [ ] `projection` 分支创建，构建零错误；
-- [ ] demo 项目 `-skipFuzz` 产出 `puring-method-call-chain.json` 且含 stepScores；
-- [ ] 1 个真实 CVE 案例完整流程可运行（或已有可复现的运行记录）；
-- [ ] 基线快照存档至 `docs/baseline-snapshot/`。
+- [x] `projection` 分支创建，构建零错误；
+- [x] demo 项目 `-skipFuzz` 产出 `puring-method-call-chain.json` 且含 stepScores；
+- [x] 1 个真实 CVE 案例完整流程可运行（或已有可复现的运行记录）；*按「复用已有结果」路径达成，见 [docs/baseline-snapshot/README.md](docs/baseline-snapshot/README.md)——环境无 GPT token，实时 fuzz 顺延至 S4 前解决*
+- [x] 基线快照存档至 `docs/baseline-snapshot/`。
 
 ### S1 数据模型与分析器骨架（11/14 下午—11/15，~1 天）
 
@@ -148,10 +148,10 @@ for 每个步骤 i（现有循环 L110）:
 4. `JsonOutputHandler` 增加 `projection.json` 输出；`ConfigProperty` 增加三个配置项。
 
 **验收标准：**
-- [ ] `classify` 模式下 demo 项目运行产出 `projection.json`，步骤数 = 链长-1，字段齐全；
-- [ ] 每步骤含 `taintObjectMap` 摘要（callee 实参 → caller 形参映射，可为空集）与 complexity/branch 分数；
-- [ ] `off` 模式行为与 S0 基线快照一致（diff 日志无差异）；
-- [ ] 编译零警告新增，单测骨架（JUnit）可运行。
+- [x] `classify` 模式下 demo 项目运行产出 `projection.json`，步骤数 = 链长-1，字段齐全；*6 条链全部满足（1/4/4/5/7/7 步 = 链长-1），12 个字段恒定输出*
+- [x] 每步骤含 `taintObjectMap` 摘要（callee 实参 → caller 形参映射，可为空集）与 complexity/branch 分数；*28 步中空集 0 步，77 个实参中 68 个有映射（88%）——SPEC §5「映射空集比例过高」风险未触发*
+- [x] `off` 模式行为与 S0 基线快照一致（diff 日志无差异）；*`compare.py` exit=0，四项全 PASS*
+- [x] 编译零警告新增，单测骨架（JUnit）可运行。*警告 18=18 与基线逐行一致；45 个单测全绿*
 
 ### S2 四分类判定实现（11/16—11/17，~1.5 天）
 

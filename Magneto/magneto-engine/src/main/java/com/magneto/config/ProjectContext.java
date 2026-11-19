@@ -8,6 +8,7 @@ import com.magneto.finder.VulDependencyFinder;
 import com.magneto.fuzz.result.FuzzChainResultWrapper;
 import com.magneto.staticanalysis.PropertyAnalysis;
 import com.magneto.staticanalysis.callgraph.ProjectCallGraph;
+import com.magneto.staticanalysis.projection.ChainProjectionService;
 import org.apache.commons.cli.CommandLine;
 
 import java.io.File;
@@ -43,6 +44,17 @@ public class ProjectContext {
     private PropertyAnalysis propertyAnalysis;
 
     private List<FuzzChainResultWrapper> fuzzChainResults;
+
+    /** 链级投影缓存，静态分析阶段构建、fuzz 阶段复用（SPEC 3.3）。OFF 模式下为 null。 */
+    private ChainProjectionService chainProjectionService;
+
+    public ChainProjectionService getChainProjectionService() {
+        return chainProjectionService;
+    }
+
+    public void setChainProjectionService(ChainProjectionService chainProjectionService) {
+        this.chainProjectionService = chainProjectionService;
+    }
 
     public ProjectContext() {
 

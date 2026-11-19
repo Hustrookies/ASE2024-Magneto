@@ -19,6 +19,8 @@ import com.magneto.staticanalysis.MethodCall;
 import com.magneto.staticanalysis.MethodCallChain;
 import com.magneto.staticanalysis.PropertyAnalysis;
 import com.magneto.staticanalysis.callgraph.ProjectCallGraph;
+import com.magneto.staticanalysis.projection.ChainProjection;
+import com.magneto.staticanalysis.projection.ChainProjectionService;
 import com.magneto.testcase.TestCaseService;
 import com.magneto.util.DecompileUtil;
 import com.magneto.util.TimeUtil;
@@ -234,6 +236,25 @@ public class Magneto {
         }, "output-static-analysis-result");
     }
 
+    /**
+     * 约束投影分析（SPEC 3.3）。OFF 模式在任何日志输出之前就返回，保证与基线逐行一致。
+     */
+    private void generateProjection(ProjectContext projectContext) {
+        if (ProjectionMode.OFF.equals(configProperty.getProjectionMode())) {
+            return;
+        }
+
+        TimeUtil.runTask(() -> {
+            VulCallChainFinder vulCallChainFinder = projectContext.getVulCallChainFinder();
+            ChainProjectionService projectionService = new ChainProjectionService();
+            projectContext.setChainProjectionService(projectionService);
+
+            List<ChainProjection> projections = projectionService.analyzeAll(vulCallChainFinder.getPuringVulCallChainList());
+            outputHandler.outputProjection(projections);
+            return projections;
+        }, "generate-constraint-projection");
+    }
+
     private List<FuzzChainResultWrapper> fuzzVulCallChain(ProjectContext projectContext) {
         return TimeUtil.runTask(() -> {
             VulCallChainFinder vulCallChainFinder = projectContext.getVulCallChainFinder();
@@ -309,6 +330,9 @@ public class Magneto {
 
             // output static analysis result
             outputStaticAnalysisResult(projectContext);
+
+            // constraint projection analysis (SPEC S1)
+            generateProjection(projectContext);
 
             timer.start("fuzz-task");
 

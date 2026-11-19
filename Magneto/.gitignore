@@ -16,3 +16,8 @@ experiments/*-results-*
 .java-version
 .dummy/
 output/
+
+# the bare `output/` rule above also matches the source package util/output;
+# tracked files survive, but NEW ones there would be silently lost
+!magneto-engine/src/main/java/com/magneto/util/output/
+!magneto-engine/src/main/java/com/magneto/util/output/**

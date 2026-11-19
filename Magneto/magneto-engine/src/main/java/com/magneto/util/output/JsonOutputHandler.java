@@ -10,6 +10,7 @@ import com.magneto.dependency.MavenDependency;
 import com.magneto.dependency.MavenDependencyChain;
 import com.magneto.staticanalysis.MethodCall;
 import com.magneto.staticanalysis.MethodCallChain;
+import com.magneto.staticanalysis.projection.ChainProjection;
 import com.magneto.testcase.model.TestcaseUnit;
 import lombok.extern.slf4j.Slf4j;
 
@@ -91,5 +92,18 @@ public class JsonOutputHandler implements OutputHandler {
         FileWriter fileWriter = new FileWriter(file);
         fileWriter.write(jsonArray.toStringPretty());
         log.info("the vulnerable method call chain has been written to the {}", file.getAbsolutePath());
+    }
+
+    @Override
+    public void outputProjection(List<ChainProjection> projections) {
+        JSONArray jsonArray = new JSONArray();
+        for (ChainProjection projection : projections) {
+            jsonArray.add(projection.toJSONObject());
+        }
+
+        File file = FileUtil.file(GlobalConfiguration.OUTPUT_DIR.getAbsolutePath(), "projection.json");
+        FileWriter fileWriter = new FileWriter(file);
+        fileWriter.write(jsonArray.toStringPretty());
+        log.info("the constraint projection has been written to the {}", file.getAbsolutePath());
     }
 }
