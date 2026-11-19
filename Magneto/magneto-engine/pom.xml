@@ -28,6 +28,15 @@
             <version>2.7.17</version>
         </dependency>
 
+        <!-- surefire auto-detects the JUnit Platform provider (jupiter is on the test classpath),
+             which silently runs zero JUnit 4 tests without the vintage engine -->
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>5.8.2</version>
+            <scope>test</scope>
+        </dependency>
+
         <!--        soot util -->
         <dependency>
             <groupId>org.soot-oss</groupId>
