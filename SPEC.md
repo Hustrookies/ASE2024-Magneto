@@ -176,9 +176,9 @@ for 每个步骤 i（现有循环 L110）:
 4. `projectedConstraints` 填充并序列化；在 demo + 1 条真实链上人工核对约束语义正确性。
 
 **验收标准：**
-- [ ] ≥1 条透传链的投影约束与 PoC（groundtruth testcase）参数值人工核对一致；
-- [ ] ≥1 条含断点链的"构造目标"约束明确指向正确实参与条件；
-- [ ] `projection.json` schema 文档化（字段说明写入 `docs/projection-schema.md`）。
+- [x] ≥1 条透传链的投影约束与 PoC（groundtruth testcase）参数值人工核对一致；*chain-0（`ValidatorUtils.getValueAsString` → `PropertyUtils.getProperty`）喂入 CVE-2019-10086 PoC 的实际值后，形参 1 精确解析为 `"class"`、形参 0 解析为新建 Object，机械核对见 `PocProjectionVerificationTest`*
+- [x] ≥1 条含断点链的"构造目标"约束明确指向正确实参与条件；*chain-3/step4（CONDITIONAL_SELECT）四个实参分别指向 caller param 3/1/4 与接收者对象，并附 REACHABILITY OBLIGATION 行*
+- [x] `projection.json` schema 文档化（字段说明写入 `docs/projection-schema.md`）。
 
 ### S4 流水线集成（11/18—11/19，~1 天）
 
