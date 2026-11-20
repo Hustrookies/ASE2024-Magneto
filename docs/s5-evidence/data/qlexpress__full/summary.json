@@ -1,0 +1,117 @@
+{
+  "mode": "full",
+  "reps_requested": 3,
+  "reps_completed": 3,
+  "llm_call_counting": {
+    "preferred": "output/llm-calls.txt — 真实 API 请求数，缓存命中不计，所有模式同一口径",
+    "fallback_jsonl": "sum of llm_calls in projection-steps.jsonl (仅 full)",
+    "fallback_log": "occurrences of \"the gpt answer:\" in run.log — 含缓存命中，偏高，不可跨模式比较"
+  },
+  "per_rep": [
+    {
+      "rep": 1,
+      "exit_status": 0,
+      "llm_calls": 7,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 8,
+      "log_gpt_answers": 8,
+      "analysis_time_ms": 33065,
+      "fuzz_time_ms": 55866,
+      "total_success_step": 6,
+      "projection_steps": 7933,
+      "projection_breakpoints": 6697,
+      "kind_histogram": {
+        "CONDITIONAL_SELECT": 2173,
+        "UNKNOWN": 3758,
+        "COMPLEX_CONSTRUCTION": 766,
+        "SIMPLE_DERIVATION": 217,
+        "PASSTHROUGH": 1019
+      }
+    },
+    {
+      "rep": 2,
+      "exit_status": 0,
+      "llm_calls": 7,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 8,
+      "log_gpt_answers": 8,
+      "analysis_time_ms": 31979,
+      "fuzz_time_ms": 54021,
+      "total_success_step": 6,
+      "projection_steps": 232,
+      "projection_breakpoints": 211,
+      "kind_histogram": {
+        "CONDITIONAL_SELECT": 78,
+        "UNKNOWN": 128,
+        "PASSTHROUGH": 21,
+        "COMPLEX_CONSTRUCTION": 5
+      }
+    },
+    {
+      "rep": 3,
+      "exit_status": 0,
+      "llm_calls": 7,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 8,
+      "log_gpt_answers": 8,
+      "analysis_time_ms": 32453,
+      "fuzz_time_ms": 55810,
+      "total_success_step": 6,
+      "projection_steps": 4714,
+      "projection_breakpoints": 4183,
+      "kind_histogram": {
+        "CONDITIONAL_SELECT": 1405,
+        "UNKNOWN": 2499,
+        "COMPLEX_CONSTRUCTION": 279,
+        "SIMPLE_DERIVATION": 129,
+        "PASSTHROUGH": 402
+      }
+    }
+  ],
+  "across_reps": {
+    "total_success_step": {
+      "n": 3,
+      "mean": 6.0,
+      "stdev": 0.0,
+      "min": 6,
+      "max": 6
+    },
+    "fuzz_time_ms": {
+      "n": 3,
+      "mean": 55232.333333333336,
+      "stdev": 1049.4190456311212,
+      "min": 54021,
+      "max": 55866
+    },
+    "llm_calls": {
+      "n": 3,
+      "mean": 7.0,
+      "stdev": 0.0,
+      "min": 7,
+      "max": 7
+    }
+  },
+  "chain_level_pooled": {
+    "_note": "pooled over chains AND reps; stdev is dominated by between-chain variance",
+    "success_step": {
+      "n": 6,
+      "mean": 3.0,
+      "stdev": 0.0,
+      "min": 3,
+      "max": 3
+    },
+    "fuzz_chain_time_ms": {
+      "n": 6,
+      "mean": 23868.333333333332,
+      "stdev": 973.5823882274508,
+      "min": 22809,
+      "max": 25008
+    }
+  },
+  "projection": {
+    "skipped_steps": 0,
+    "upgraded_steps": 0,
+    "total_steps_instrumented": 24,
+    "llm_calls_total_from_jsonl": 21
+  }
+}

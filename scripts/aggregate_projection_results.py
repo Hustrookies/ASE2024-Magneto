@@ -82,24 +82,43 @@ def collect(mode_dir, mode, reps):
                 pass
 
         # ---- 埋点（仅 full 模式产出）----
-        jsonl = out_dir / "projection-steps.jsonl"
-        jsonl_calls = 0
-        if jsonl.exists():
-            for line in jsonl.read_text().splitlines():
-                line = line.strip()
-                if not line:
+        # 权威来源是 run.log 里的 [projection-step] 行：它对每条链都完整。
+        # projection-steps.jsonl 曾有一个缺陷——ProjectionStepLog 在 CVE 循环内被反复构造，
+        # 而构造即截断，导致文件里只剩最后一条链的行（已修，但历史数据仍需从日志恢复）。
+        records = []
+        run_log = rep_dir / "run.log"
+        if run_log.exists():
+            for raw in run_log.open(errors="replace"):
+                marker = "[projection-step] "
+                at = raw.find(marker)
+                if at < 0:
                     continue
                 try:
-                    r = json.loads(line)
+                    records.append(json.loads(raw[at + len(marker):].strip()))
                 except json.JSONDecodeError:
-                    continue
-                row = {"mode": mode, "rep": rep, "source": "projection-jsonl"}
-                for col in JSONL_COLUMNS[3:]:
-                    row[col] = r.get(col)
-                step_rows.append(row)
-                jsonl_calls += r.get("llm_calls") or 0
-            info["llm_calls"] = jsonl_calls
-            info["llm_source"] = "projection-jsonl"
+                    print(f"  WARNING: 无法解析埋点行: {raw.strip()[:120]}", file=sys.stderr)
+
+        jsonl = out_dir / "projection-steps.jsonl"
+        if not records and jsonl.exists():
+            for line in jsonl.read_text().splitlines():
+                line = line.strip()
+                if line:
+                    try:
+                        records.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+            if records:
+                print(f"  NOTE: {rep_dir} 无 [projection-step] 日志，回退使用 jsonl", file=sys.stderr)
+
+        jsonl_calls = 0
+        for r in records:
+            row = {"mode": mode, "rep": rep, "source": "projection-jsonl"}
+            for col in JSONL_COLUMNS[3:]:
+                row[col] = r.get(col)
+            step_rows.append(row)
+            jsonl_calls += r.get("llm_calls") or 0
+        if records:
+            info["instrumented_steps"] = len(records)
 
         # ---- 权威口径：output/llm-calls.txt（真实 API 请求数，所有模式一致）----
         calls_file = out_dir / "llm-calls.txt"

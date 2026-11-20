@@ -1,0 +1,7 @@
+mode,rep,chain_index,vul_name,chain_len,success_step,fuzz_chain_time_ms
+off,1,0,CVE-2019-10086,5,3,24555
+off,1,1,CVE-2019-10086,5,3,21104
+off,2,0,CVE-2019-10086,5,1,22842
+off,2,1,CVE-2019-10086,5,3,23865
+off,3,0,CVE-2019-10086,5,3,24779
+off,3,1,CVE-2019-10086,5,3,21241

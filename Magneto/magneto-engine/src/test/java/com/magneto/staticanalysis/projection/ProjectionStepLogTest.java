@@ -76,6 +76,25 @@ public class ProjectionStepLogTest {
                 new File(out, ProjectionStepLog.FILE_NAME).exists());
     }
 
+    /**
+     * 回归测试：StepFuzzRunner 会为每条链构造一次 ProjectionStepLog（它在 CVE 循环内），
+     * 若"构造即截断"，后一条链就会擦掉前一条链的全部埋点。实测曾导致 jsonl 只剩最后一条链。
+     * 截断必须每个 JVM 运行只发生一次。
+     */
+    @Test
+    public void aSecondLogOnTheSameRunDoesNotWipeTheFirst() throws Exception {
+        File out = folder.newFolder("output");
+
+        ProjectionStepLog first = new ProjectionStepLog(out, true);
+        first.append(record(1));
+        ProjectionStepLog second = new ProjectionStepLog(out, true);
+        second.append(record(2));
+
+        List<String> lines = Files.readAllLines(new File(out, ProjectionStepLog.FILE_NAME).toPath(),
+                StandardCharsets.UTF_8);
+        assertEquals("同一运行内多次构造不得清空已写入的记录", 2, lines.size());
+    }
+
     @Test
     public void laterAppendsDoNotOverwriteEarlierRecords() throws Exception {
         File out = folder.newFolder("output");

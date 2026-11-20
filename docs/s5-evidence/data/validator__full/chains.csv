@@ -1,0 +1,11 @@
+mode,rep,chain_index,vul_name,chain_len,success_step,fuzz_chain_time_ms
+full,1,0,CVE-2019-10086,2,1,26
+full,1,1,CVE-2019-10086,5,3,48959
+full,2,0,CVE-2019-10086,2,1,18
+full,2,1,CVE-2019-10086,5,0,41521
+full,3,0,CVE-2019-10086,2,1,23
+full,3,1,CVE-2019-10086,5,3,46283
+full,4,0,CVE-2019-10086,2,1,19
+full,4,1,CVE-2019-10086,5,3,46141
+full,5,0,CVE-2019-10086,2,1,18
+full,5,1,CVE-2019-10086,5,3,46283

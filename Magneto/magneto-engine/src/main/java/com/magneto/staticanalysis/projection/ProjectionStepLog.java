@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 步骤级埋点落盘：每个 fuzz 步骤一行 JSON，写入 output 目录的 projection-steps.jsonl。
@@ -15,6 +18,14 @@ public class ProjectionStepLog {
 
     public static final String FILE_NAME = "projection-steps.jsonl";
 
+    /**
+     * 本次 JVM 运行中已经清空过的文件。StepFuzzRunner 在 CVE 循环内为每条链构造一次本类，
+     * 若「构造即截断」，后一条链就会擦掉前一条链的全部埋点（实测曾使 jsonl 只剩最后一条链）。
+     * 因此每个文件在一次运行里只清空一次：既避免同目录重跑导致行翻倍，又不丢本轮已写记录。
+     */
+    private static final Set<File> TRUNCATED_THIS_RUN =
+            Collections.newSetFromMap(new ConcurrentHashMap<File, Boolean>());
+
     private final File file;
 
     private final boolean enabled;
@@ -22,9 +33,7 @@ public class ProjectionStepLog {
     public ProjectionStepLog(File outputDir, boolean enabled) {
         this.enabled = enabled;
         this.file = enabled ? FileUtil.file(outputDir, FILE_NAME) : null;
-        if (this.file != null) {
-            // 每次运行从空文件开始：append 语义下，往同一输出目录重跑会让每一步出现两行，
-            // 而聚合脚本是按行求和的。
+        if (this.file != null && TRUNCATED_THIS_RUN.add(this.file.getAbsoluteFile())) {
             FileUtil.del(this.file);
         }
     }

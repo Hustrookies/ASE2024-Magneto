@@ -1,0 +1,7 @@
+mode,rep,source,chain_id,vul_name,step,kind,breakpoint,fuzz_skipped,trial_result,upgraded,step_time_ms,llm_calls,complexity,branch,chain_index,success_step_index,consume_time_ms,projection_kind,projection_fuzz_skipped,projection_upgraded,projection_llm_calls
+off,1,report-json,,CVE-2022-42004,,,,,,,,,,,0,0,8,,,,
+off,1,report-json,,CVE-2022-42004,,,,,,,,,,,1,0,8,,,,
+off,2,report-json,,CVE-2022-42004,,,,,,,,,,,0,0,9,,,,
+off,2,report-json,,CVE-2022-42004,,,,,,,,,,,1,0,8,,,,
+off,3,report-json,,CVE-2022-42004,,,,,,,,,,,0,0,9,,,,
+off,3,report-json,,CVE-2022-42004,,,,,,,,,,,1,0,6,,,,

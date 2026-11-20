@@ -1,0 +1,83 @@
+{
+  "mode": "off",
+  "reps_requested": 3,
+  "reps_completed": 3,
+  "llm_call_counting": {
+    "preferred": "output/llm-calls.txt — 真实 API 请求数，缓存命中不计，所有模式同一口径",
+    "fallback_jsonl": "sum of llm_calls in projection-steps.jsonl (仅 full)",
+    "fallback_log": "occurrences of \"the gpt answer:\" in run.log — 含缓存命中，偏高，不可跨模式比较"
+  },
+  "per_rep": [
+    {
+      "rep": 1,
+      "exit_status": 0,
+      "llm_calls": 2,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "log_gpt_answers": 3,
+      "analysis_time_ms": 39659,
+      "fuzz_time_ms": 35076,
+      "total_success_step": 2
+    },
+    {
+      "rep": 2,
+      "exit_status": 0,
+      "llm_calls": 2,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "log_gpt_answers": 3,
+      "analysis_time_ms": 36793,
+      "fuzz_time_ms": 35472,
+      "total_success_step": 2
+    },
+    {
+      "rep": 3,
+      "exit_status": 0,
+      "llm_calls": 2,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "log_gpt_answers": 3,
+      "analysis_time_ms": 40526,
+      "fuzz_time_ms": 34408,
+      "total_success_step": 2
+    }
+  ],
+  "across_reps": {
+    "total_success_step": {
+      "n": 3,
+      "mean": 2.0,
+      "stdev": 0.0,
+      "min": 2,
+      "max": 2
+    },
+    "fuzz_time_ms": {
+      "n": 3,
+      "mean": 34985.333333333336,
+      "stdev": 537.7632688584572,
+      "min": 34408,
+      "max": 35472
+    },
+    "llm_calls": {
+      "n": 3,
+      "mean": 2.0,
+      "stdev": 0.0,
+      "min": 2,
+      "max": 2
+    }
+  },
+  "chain_level_pooled": {
+    "_note": "pooled over chains AND reps; stdev is dominated by between-chain variance",
+    "success_step": {
+      "n": 6,
+      "mean": 1.0,
+      "stdev": 0.0,
+      "min": 1,
+      "max": 1
+    },
+    "fuzz_chain_time_ms": {
+      "n": 6,
+      "mean": 11326.5,
+      "stdev": 10459.573141385838,
+      "min": 1522,
+      "max": 20925
+    }
+  },
+  "projection": null
+}

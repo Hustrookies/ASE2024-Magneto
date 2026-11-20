@@ -79,7 +79,7 @@ def report(exp_dir):
         if proj:
             print(f"\n[{m}] 投影埋点: 步骤 {proj['total_steps_instrumented']} | "
                   f"跳过 {proj['skipped_steps']} | 升级 {proj['upgraded_steps']} | "
-                  f"LLM 调用 {proj['llm_calls_total']}")
+                  f"LLM 调用 {proj.get('llm_calls_total_from_jsonl', 0)}")
         rep0 = (s.get("per_rep") or [{}])[0]
         if rep0.get("kind_histogram"):
             total = sum(rep0["kind_histogram"].values())

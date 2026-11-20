@@ -1,0 +1,16 @@
+mode,rep,source,chain_id,vul_name,step,kind,breakpoint,fuzz_skipped,trial_result,upgraded,step_time_ms,llm_calls,complexity,branch,chain_index,success_step_index,consume_time_ms,projection_kind,projection_fuzz_skipped,projection_upgraded,projection_llm_calls
+full,1,projection-jsonl,chain-0,CVE-2022-42004,1,PASSTHROUGH,False,True,True,False,34,0,7,1,,,,,,,
+full,1,projection-jsonl,chain-1,CVE-2022-42004,1,PASSTHROUGH,False,True,True,False,11,0,7,1,,,,,,,
+full,1,projection-jsonl,chain-1,CVE-2022-42004,4,CONDITIONAL_SELECT,True,False,False,False,21289,1,109,1,,,,,,,
+full,1,report-json,,CVE-2022-42004,,,,,,,,,,,0,0,16,PASSTHROUGH,True,False,0
+full,1,report-json,,CVE-2022-42004,,,,,,,,,,,1,0,8,PASSTHROUGH,True,False,0
+full,2,projection-jsonl,chain-0,CVE-2022-42004,1,PASSTHROUGH,False,True,True,False,27,0,7,1,,,,,,,
+full,2,projection-jsonl,chain-1,CVE-2022-42004,1,PASSTHROUGH,False,True,True,False,9,0,7,1,,,,,,,
+full,2,projection-jsonl,chain-1,CVE-2022-42004,4,CONDITIONAL_SELECT,True,False,False,False,21276,1,109,1,,,,,,,
+full,2,report-json,,CVE-2022-42004,,,,,,,,,,,0,0,7,PASSTHROUGH,True,False,0
+full,2,report-json,,CVE-2022-42004,,,,,,,,,,,1,0,6,PASSTHROUGH,True,False,0
+full,3,projection-jsonl,chain-0,CVE-2022-42004,1,PASSTHROUGH,False,True,True,False,32,0,7,1,,,,,,,
+full,3,projection-jsonl,chain-1,CVE-2022-42004,1,PASSTHROUGH,False,True,True,False,7,0,7,1,,,,,,,
+full,3,projection-jsonl,chain-1,CVE-2022-42004,4,CONDITIONAL_SELECT,True,False,False,False,21194,1,109,1,,,,,,,
+full,3,report-json,,CVE-2022-42004,,,,,,,,,,,0,0,10,PASSTHROUGH,True,False,0
+full,3,report-json,,CVE-2022-42004,,,,,,,,,,,1,0,5,PASSTHROUGH,True,False,0

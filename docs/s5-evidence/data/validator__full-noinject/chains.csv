@@ -1,0 +1,11 @@
+mode,rep,chain_index,vul_name,chain_len,success_step,fuzz_chain_time_ms
+full-noinject,1,0,CVE-2019-10086,2,1,21
+full-noinject,1,1,CVE-2019-10086,5,2,43461
+full-noinject,2,0,CVE-2019-10086,2,1,19
+full-noinject,2,1,CVE-2019-10086,5,2,43530
+full-noinject,3,0,CVE-2019-10086,2,1,20
+full-noinject,3,1,CVE-2019-10086,5,2,43482
+full-noinject,4,0,CVE-2019-10086,2,1,22
+full-noinject,4,1,CVE-2019-10086,5,2,43710
+full-noinject,5,0,CVE-2019-10086,2,1,16
+full-noinject,5,1,CVE-2019-10086,5,3,44978

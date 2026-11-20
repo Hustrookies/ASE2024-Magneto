@@ -1,0 +1,7 @@
+mode,rep,chain_index,vul_name,chain_len,success_step,fuzz_chain_time_ms
+off,1,0,CVE-2022-42004,6,1,1522
+off,1,1,CVE-2022-42004,7,1,20925
+off,2,0,CVE-2022-42004,6,1,1810
+off,2,1,CVE-2022-42004,7,1,20832
+off,3,0,CVE-2022-42004,6,1,2006
+off,3,1,CVE-2022-42004,7,1,20864

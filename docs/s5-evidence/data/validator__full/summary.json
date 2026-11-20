@@ -1,0 +1,153 @@
+{
+  "mode": "full",
+  "reps_requested": 5,
+  "reps_completed": 5,
+  "llm_call_counting": {
+    "preferred": "output/llm-calls.txt — 真实 API 请求数，缓存命中不计，所有模式同一口径",
+    "fallback_jsonl": "sum of llm_calls in projection-steps.jsonl (仅 full)",
+    "fallback_log": "occurrences of \"the gpt answer:\" in run.log — 含缓存命中，偏高，不可跨模式比较"
+  },
+  "per_rep": [
+    {
+      "rep": 1,
+      "exit_status": 0,
+      "llm_calls": 4,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 5,
+      "log_gpt_answers": 3,
+      "analysis_time_ms": 31860,
+      "fuzz_time_ms": 56988,
+      "total_success_step": 4,
+      "projection_steps": 28,
+      "projection_breakpoints": 20,
+      "kind_histogram": {
+        "PASSTHROUGH": 1,
+        "SIMPLE_DERIVATION": 7,
+        "UNKNOWN": 14,
+        "COMPLEX_CONSTRUCTION": 6
+      }
+    },
+    {
+      "rep": 2,
+      "exit_status": 0,
+      "llm_calls": 1,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 2,
+      "log_gpt_answers": 1,
+      "analysis_time_ms": 30218,
+      "fuzz_time_ms": 49385,
+      "total_success_step": 1,
+      "projection_steps": 28,
+      "projection_breakpoints": 20,
+      "kind_histogram": {
+        "PASSTHROUGH": 1,
+        "SIMPLE_DERIVATION": 7,
+        "UNKNOWN": 14,
+        "COMPLEX_CONSTRUCTION": 6
+      }
+    },
+    {
+      "rep": 3,
+      "exit_status": 0,
+      "llm_calls": 4,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 5,
+      "log_gpt_answers": 3,
+      "analysis_time_ms": 28885,
+      "fuzz_time_ms": 53491,
+      "total_success_step": 4,
+      "projection_steps": 28,
+      "projection_breakpoints": 20,
+      "kind_histogram": {
+        "PASSTHROUGH": 1,
+        "SIMPLE_DERIVATION": 7,
+        "UNKNOWN": 14,
+        "COMPLEX_CONSTRUCTION": 6
+      }
+    },
+    {
+      "rep": 4,
+      "exit_status": 0,
+      "llm_calls": 4,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 5,
+      "log_gpt_answers": 3,
+      "analysis_time_ms": 29119,
+      "fuzz_time_ms": 53529,
+      "total_success_step": 4,
+      "projection_steps": 28,
+      "projection_breakpoints": 20,
+      "kind_histogram": {
+        "PASSTHROUGH": 1,
+        "SIMPLE_DERIVATION": 7,
+        "UNKNOWN": 14,
+        "COMPLEX_CONSTRUCTION": 6
+      }
+    },
+    {
+      "rep": 5,
+      "exit_status": 0,
+      "llm_calls": 4,
+      "llm_source": "llm-calls.txt (real API requests)",
+      "instrumented_steps": 5,
+      "log_gpt_answers": 3,
+      "analysis_time_ms": 29256,
+      "fuzz_time_ms": 53454,
+      "total_success_step": 4,
+      "projection_steps": 28,
+      "projection_breakpoints": 20,
+      "kind_histogram": {
+        "PASSTHROUGH": 1,
+        "SIMPLE_DERIVATION": 7,
+        "UNKNOWN": 14,
+        "COMPLEX_CONSTRUCTION": 6
+      }
+    }
+  ],
+  "across_reps": {
+    "total_success_step": {
+      "n": 5,
+      "mean": 3.4,
+      "stdev": 1.3416407864998738,
+      "min": 1,
+      "max": 4
+    },
+    "fuzz_time_ms": {
+      "n": 5,
+      "mean": 53369.4,
+      "stdev": 2693.3773036839825,
+      "min": 49385,
+      "max": 56988
+    },
+    "llm_calls": {
+      "n": 5,
+      "mean": 3.4,
+      "stdev": 1.3416407864998738,
+      "min": 1,
+      "max": 4
+    }
+  },
+  "chain_level_pooled": {
+    "_note": "pooled over chains AND reps; stdev is dominated by between-chain variance",
+    "success_step": {
+      "n": 10,
+      "mean": 1.7,
+      "stdev": 1.1595018087284057,
+      "min": 0,
+      "max": 3
+    },
+    "fuzz_chain_time_ms": {
+      "n": 10,
+      "mean": 22929.1,
+      "stdev": 24213.786538756067,
+      "min": 18,
+      "max": 48959
+    }
+  },
+  "projection": {
+    "skipped_steps": 9,
+    "upgraded_steps": 1,
+    "total_steps_instrumented": 22,
+    "llm_calls_total_from_jsonl": 17
+  }
+}

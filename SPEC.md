@@ -4,9 +4,11 @@
 >
 > 工程：`ASE2024-Magneto/Magneto`（Java 8 + Soot + Spring Boot，基线 commit `8f024c0d`）
 >
-> 状态：**执行中**（S0—S4 已验收，S5 待做）。按阶段门禁顺序推进，任何阶段未验收不得进入下一阶段。
+> 状态：**阶段 A 完成**（S0—S5 全部验收通过，含 1 项附加消融未达显著、1 项默认关闭，均如实记录于 S5）。
 > 验收证据：[docs/baseline-snapshot/](docs/baseline-snapshot/)（S0）、[docs/projection-annotation.md](docs/projection-annotation.md)（S2）、
-> [docs/projection-schema.md](docs/projection-schema.md)（S3）、[docs/s4-evidence/](docs/s4-evidence/)（S4）
+> [docs/projection-schema.md](docs/projection-schema.md)（S3）、[docs/s4-evidence/](docs/s4-evidence/)（S4）、
+> [docs/s5-evidence/RESULTS.md](docs/s5-evidence/RESULTS.md)（S5 实验结果与效度威胁）、
+> [docs/stage-A-summary.md](docs/stage-A-summary.md)（阶段总结）
 
 ---
 
@@ -209,10 +211,15 @@ for 每个步骤 i（现有循环 L110）:
 3. 汇总冒烟数据：断点率、跳过步骤数、LLM 调用数、每步耗时、成功/失败与基线对照。
 
 **验收标准（= 阶段 A 总验收，进入阶段 B 的入口条件）：**
-- [ ] 2—3 个案例 `full` 模式成功率不低于 `off`（若有下降，逐条归因：误判透传 → 修 S2 规则；约束注入干扰 → 回退 `projection-skip-llm-for-passthrough` 配置）；
-- [ ] 冒烟数据表显示非断点步骤 LLM 调用与 fuzz 时间显著减少（记录具体数字，作为 11 月汇报初步证据）;
-- [ ] 实验脚本可一键重跑，埋点 CSV 字段完整；
-- [ ] `projection` 分支代码提交（分阶段 commit，message 规范），阶段 A 总结写入周报。
+- [x] 2—3 个案例 `full` 模式成功率不低于 `off`（若有下降，逐条归因：误判透传 → 修 S2 规则；约束注入干扰 → 回退 `projection-skip-llm-for-passthrough` 配置）；*3 案例 4 组配对对照全部 PASS（validator 3好/6平/1差、validator-noinject 1/8/1、idworker 0/6/0、qlexpress 1/5/0）。两处"更差"均已归因：1 例为单次合成失败后完整 fuzz 亦失败（安全网未产生错误判定），1 例源于 QLExpress 静态分析不确定导致两臂链不同。另：S5 过程中确实发现并修正了一处"误判透传"（接收者未投影），见 `docs/projection-annotation.md` 补记*
+- [x] 冒烟数据表显示非断点步骤 LLM 调用与 fuzz 时间显著减少（记录具体数字，作为 11 月汇报初步证据）；*非断点步骤 26 次尝试 25 次成功（PASSTHROUGH 16/16、SIMPLE_DERIVATION 9/10），升级率 3.8%；断点侧 50 次零误跳过。真实 LLM 请求数 idworker −50%、validator −19%；单步量级 2000ms→20ms、1 次 LLM→0 次、不进变异循环。整轮耗时未同比例下降的原因（短预算伪影）见 `docs/s5-evidence/RESULTS.md` §6.2*
+- [x] 实验脚本可一键重跑，埋点 CSV 字段完整；*`run_projection_experiment.sh` + `aggregate_projection_results.py` + `compare_modes.py`；steps.csv 含 SPEC 3.3 全部 12 个埋点字段*
+- [x] `projection` 分支代码提交（分阶段 commit，message 规范），阶段 A 总结写入周报。*S0—S5 各自独立 commit；总结见 `docs/stage-A-summary.md` 与 `开题/2026年周报-朱一丁.md` 的 2026.11.14-2026.11.21 条目*
+
+**未达成的附加项（如实记录）：**
+- 约束注入的消融方向为正但**不显著**（chain-1 上 4/5 对 1/5 对 1/5，n=5，Fisher p≈0.55）。只能主张"有正向迹象、证据不足"，需 ≥20 轮／臂重测。
+- 复杂度分级 fuzz 预算（任务 5）已实现但默认关闭，未按 SPEC 原文默认启用——开启会给 off/full 对照引入第二个变量。留作阶段 B 消融。
+- QLExpress 的跨臂数值不可比（两臂实际模糊测试的是不同链），根因是上游并发建图导致的静态分析不确定性，非本方法引入。
 
 ---
 
