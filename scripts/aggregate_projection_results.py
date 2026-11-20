@@ -20,6 +20,7 @@ import csv
 import json
 import math
 import re
+import sys
 from pathlib import Path
 
 GPT_ANSWER_MARKER = "the gpt answer:"
@@ -55,9 +56,13 @@ def stat_block(values):
 
 
 def read_json(path):
+    """读取 JSON；失败时打印告警而不是静默返回 None——否则某一轮会悄悄从统计里消失。"""
+    if not path.exists():
+        return None
     try:
         return json.loads(path.read_text())
-    except Exception:
+    except Exception as exc:
+        print(f"  WARNING: cannot parse {path}: {exc}", file=sys.stderr)
         return None
 
 
@@ -180,7 +185,9 @@ def main():
     write_csv(mode_dir / "chains.csv", chain_rows, CHAIN_COLUMNS)
 
     ok_reps = [r for r in per_rep if r.get("exit_status") == 0]
-    jsonl = [r for r in step_rows if r["source"] == "projection-jsonl"]
+    ok_rep_ids = {r["rep"] for r in ok_reps}
+    jsonl = [r for r in step_rows
+             if r["source"] == "projection-jsonl" and r["rep"] in ok_rep_ids]
 
     summary = {
         "mode": args.mode,
@@ -200,7 +207,10 @@ def main():
             "llm_calls": stat_block([r["llm_calls"] for r in ok_reps
                                      if r.get("llm_calls") is not None]),
         },
-        "chain_level": {
+        # 注意：这里把「不同链」和「不同轮次」混在一个样本里，其 stdev 主要是跨链差异，
+        # 不是运行间波动。要衡量可复现性请看 across_reps（每轮一个样本）。
+        "chain_level_pooled": {
+            "_note": "pooled over chains AND reps; stdev is dominated by between-chain variance",
             "success_step": stat_block([c["success_step"] for c in chain_rows
                                         if c.get("success_step") is not None]),
             "fuzz_chain_time_ms": stat_block([c["fuzz_chain_time_ms"] for c in chain_rows

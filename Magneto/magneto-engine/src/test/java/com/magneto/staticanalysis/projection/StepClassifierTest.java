@@ -6,6 +6,7 @@ import com.magneto.staticanalysis.projection.fixture.FieldOfParamFixture;
 import com.magneto.staticanalysis.projection.fixture.FieldOfThisFixture;
 import com.magneto.staticanalysis.projection.fixture.ConditionalSelectFixture;
 import com.magneto.staticanalysis.projection.fixture.GuardedCallFixture;
+import com.magneto.staticanalysis.projection.fixture.GuardedInTryFixture;
 import com.magneto.staticanalysis.projection.fixture.ParamGuardFixture;
 import com.magneto.staticanalysis.projection.fixture.PassthroughFixture;
 import com.magneto.staticanalysis.projection.fixture.SimpleDerivationFixture;
@@ -158,6 +159,19 @@ public class StepClassifierTest {
         // 理由见 SPEC S2 红线——形参守卫同样是必须满足的约束，漏判的代价（白跑一次试运行再升级）
         // 高于多判的代价（本来就要跑的定向 fuzz）。
         StepTrace trace = classify(ParamGuardFixture.class);
+
+        assertEquals(ProjectionKind.CONDITIONAL_SELECT, trace.getKind());
+        assertTrue(trace.isGuarded());
+    }
+
+    /**
+     * 守卫在 try 块内仍须被发现。这条钉住了 def 链与守卫遍历使用 BriefUnitGraph 的选择：
+     * 正常控制流边已包含所有真正支配调用点的分支；改用 ExceptionalUnitGraph 只会把
+     * 异常路径上并不支配调用点的 if 也算进来，属于过度保守而非更安全。
+     */
+    @Test
+    public void r4_aGuardInsideATryBlockIsStillDetected() {
+        StepTrace trace = classify(GuardedInTryFixture.class);
 
         assertEquals(ProjectionKind.CONDITIONAL_SELECT, trace.getKind());
         assertTrue(trace.isGuarded());

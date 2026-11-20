@@ -85,6 +85,13 @@ if [[ $SKIP_FUZZ -eq 0 ]]; then
 fi
 
 # --tag 让同一实验目录下能放多个同模式不同配置的臂（如消融：full 与 full-noinject）
+# docs/s4-evidence/VERIFICATION.md 的结论：预算接近某步实际所需时间时，成败对预算高度敏感，
+# 短预算下的成功率不具判别力。低于该阈值时给出提示，避免用噪声数据下结论。
+if [[ $SKIP_FUZZ -eq 0 && $FUZZ_TIME -lt 60000 ]]; then
+  echo "WARNING: --fuzz-time=${FUZZ_TIME}ms 低于 60s。短预算下断点步骤的成败接近抛硬币，" >&2
+  echo "         成功率差异不具判别力（见 docs/s4-evidence/VERIFICATION.md 的归因记录）。" >&2
+fi
+
 MODE_DIR="$OUT/${TAG:-$MODE}"
 mkdir -p "$MODE_DIR"
 
