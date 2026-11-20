@@ -76,7 +76,10 @@ public class PocProjectionVerificationTest {
         s.setStepIndex(4);
         s.setCallerSignature(VALIDATE_FOR_RULE);
         s.setCalleeSignature(EXECUTE_VALIDATION_METHOD);
-        s.setKind(ProjectionKind.CONDITIONAL_SELECT);
+        // 接收者 va 是 caller 形参，故 kind 被接收者规则升级为 COMPLEX_CONSTRUCTION；
+        // 同时该调用点受两处提前返回守卫支配，guarded=true。两者都是断点理由。
+        s.setKind(ProjectionKind.COMPLEX_CONSTRUCTION);
+        s.setGuarded(true);
         s.setParamProjections(new ArrayList<>(Arrays.asList(
                 param(0, ProjectionSource.CALLER_FIELD, -1),
                 param(1, ProjectionSource.CALLER_PARAM, 3),

@@ -112,7 +112,9 @@ public final class ConstraintProjector {
             lines.add(renderParam(step, param, requirement));
         }
 
-        if (step.getKind() == ProjectionKind.CONDITIONAL_SELECT) {
+        // 由 guarded 标志驱动，而非 kind：接收者规则会把受守卫支配的步骤升级成严重度更高的
+        // COMPLEX_CONSTRUCTION / UNKNOWN，若按 kind 判断，可达性义务就会消失。
+        if (step.isGuarded()) {
             lines.add("REACHABILITY OBLIGATION: this call site is reached only under a condition "
                     + "(a guarding branch, or the argument has several definitions across branches). "
                     + "The seed must drive the caller into this call site, not merely supply the argument value.");

@@ -87,10 +87,12 @@ public class ProjectionAnalyzer {
             }
 
             StepTrace worst = null;
+            boolean anyGuarded = false;
             List<String> evidence = new ArrayList<>();
             for (Unit callSite : callSites) {
                 StepTrace trace = StepClassifier.classify(body, callSite, maxDepth);
                 evidence.add("--- call site: " + callSite + " ---\n" + trace.getEvidence());
+                anyGuarded |= trace.isGuarded();
                 if (worst == null || StepClassifier.worse(worst.getKind(), trace.getKind()) != worst.getKind()) {
                     worst = trace;
                 }
@@ -98,6 +100,7 @@ public class ProjectionAnalyzer {
 
             // 多调用点取最劣；证据保留全部调用点，便于人工核对
             step.setKind(worst.getKind());
+            step.setGuarded(anyGuarded);
             step.getParamProjections().addAll(worst.getParamProjections());
             step.setEvidence(String.join("\n", evidence));
         } catch (Throwable t) {

@@ -219,12 +219,44 @@ public class ConstraintProjectorTest {
     public void aGuardedBreakpointStepRendersTheReachabilityObligation() {
         StepProjection s = step(ProjectionKind.CONDITIONAL_SELECT,
                 param(0, ProjectionSource.CALLER_PARAM, 0));
-        s.setEvidence("if $stack2 == 0 goto L1");
+        s.setGuarded(true);
 
         String joined = String.join("\n", ConstraintProjector.render(s, req("V")));
 
-        assertTrue("条件选择类断点必须提示「调用点受守卫支配」，否则 S4 合成的种子到不了 callee。实际: " + joined,
-                joined.toLowerCase().contains("guard") || joined.contains("branch"));
+        assertTrue("受守卫支配的断点必须提示可达性义务，否则 S4 合成的种子到不了 callee。实际: " + joined,
+                joined.contains("REACHABILITY OBLIGATION"));
+    }
+
+    /**
+     * 守卫提示必须由 guarded 标志驱动，而不是由 kind 驱动。
+     * 接收者规则会把一个「受守卫支配」的步骤升级成 COMPLEX_CONSTRUCTION / UNKNOWN
+     * （严重度更高），若按 kind 判断，可达性义务就会消失——真实例子是 commons-validator
+     * chain-3/step4，其接收者 va 是 caller 形参。
+     */
+    @Test
+    public void theReachabilityObligationSurvivesEscalationToAHigherSeverityKind() {
+        for (ProjectionKind kind : new ProjectionKind[]{ProjectionKind.COMPLEX_CONSTRUCTION,
+                ProjectionKind.UNKNOWN, ProjectionKind.CONDITIONAL_SELECT}) {
+            StepProjection s = step(kind, param(0, ProjectionSource.CALLER_PARAM, 0));
+            s.setGuarded(true);
+
+            String joined = String.join("\n", ConstraintProjector.render(s, req("V")));
+
+            assertTrue(kind + " 且受守卫支配时仍须给出可达性义务，实际: " + joined,
+                    joined.contains("REACHABILITY OBLIGATION"));
+        }
+    }
+
+    @Test
+    public void anUnguardedBreakpointDoesNotClaimAReachabilityObligation() {
+        StepProjection s = step(ProjectionKind.COMPLEX_CONSTRUCTION,
+                param(0, ProjectionSource.NEW_OBJECT, -1));
+        s.setGuarded(false);
+
+        String joined = String.join("\n", ConstraintProjector.render(s, req("V")));
+
+        assertFalse("无守卫时不该凭空声称可达性义务，实际: " + joined,
+                joined.contains("REACHABILITY OBLIGATION"));
     }
 
     /**

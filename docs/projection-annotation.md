@@ -262,3 +262,60 @@ UNKNOWN 的 10 例兜底原因（去重后 4 种，全部为合法 R5）：
 后两类理论上可通过加大 `maxInterAnalysisScope` 挽回，但 `Map.get` 本身是接口分发，
 加深后仍会落到「无法解析」，收益有限；第 4 类加深有望降级为 SIMPLE_DERIVATION，
 留待阶段 B 评估耗时后再决定是否调整。
+
+---
+
+# 补记：S5 接收者规则引入后的标签变化
+
+本文正文记录的是 **S2 阶段**（接收者规则引入前）的标注与工具输出。S5 在 QLExpress 上发现
+「只投影实参、不投影接收者」会导致系统性误判后，`StepClassifier` 增加了接收者分析
+（仅静态调用、`this`、`this` 的直接字段读三种情形放行），并把字段读的 `CALLER_FIELD`
+限定为基对象是 `this` 的情形。
+
+**10 个标注步骤的断点判定全部未变**（仍为 10/10 一致、红线违规 0 例），
+但有 3 步的 `kind` 标签发生了变化——均朝更严重方向，属允许的保守偏差：
+
+| 步骤 | 正文记录（S2） | 当前（S5 后） | 变化原因 | 断点判定 |
+|---|---|---|---|---|
+| chain-0/step1 | PASSTHROUGH | PASSTHROUGH | 静态调用，无接收者 | 不变（非断点）|
+| chain-2/step1 | SIMPLE_DERIVATION | SIMPLE_DERIVATION | 同上 | 不变（非断点）|
+| chain-2/step2 | UNKNOWN | UNKNOWN | — | 不变（断点）|
+| **chain-2/step3** | CONDITIONAL_SELECT | **UNKNOWN** | 接收者 `field` 来自 `getFieldMap().get(fieldName)` 与 `fields.next()`，溯源深度耗尽 → UNKNOWN（严重度 4）覆盖 CONDITIONAL_SELECT（2） | 不变（断点）|
+| chain-2/step4 | SIMPLE_DERIVATION | SIMPLE_DERIVATION | 接收者为 `this` | 不变（非断点）|
+| chain-3/step1 | SIMPLE_DERIVATION | SIMPLE_DERIVATION | 静态调用 | 不变（非断点）|
+| **chain-3/step2** | COMPLEX_CONSTRUCTION | COMPLEX_CONSTRUCTION | 原因为数组元素读；现**另加**一条：接收者 `field` 是 caller 形参 | 不变（断点）|
+| chain-3/step3 | UNKNOWN | UNKNOWN | — | 不变（断点）|
+| **chain-3/step4** | CONDITIONAL_SELECT | **COMPLEX_CONSTRUCTION** | 接收者 `va` 是 caller 形参（严重度 3 > 2）；守卫依然存在，`guarded=true` | 不变（断点）|
+| chain-3/step5 | UNKNOWN | UNKNOWN | — | 不变（断点）|
+
+## 由此暴露并修复的一个回归
+
+chain-3/step4 正是正文中标为「本 SPEC 最关键的正例」的那一步：实参全部可投影、
+只因调用点受守卫支配而必须判为断点。它的 `kind` 被接收者规则升级为
+COMPLEX_CONSTRUCTION 后，`ConstraintProjector.render` 里
+`if (kind == CONDITIONAL_SELECT)` 的条件不再成立，**可达性义务提示随之消失**——
+而这一步恰恰最需要该提示。
+
+修复方式：`StepProjection` 增加独立的 `guarded` 字段（多调用点取「或」），
+渲染改由 `guarded` 驱动而非 `kind`。由
+`ConstraintProjectorTest.theReachabilityObligationSurvivesEscalationToAHigherSeverityKind`
+锁定：对 COMPLEX_CONSTRUCTION / UNKNOWN / CONDITIONAL_SELECT 三种 kind，
+只要 `guarded=true` 就必须输出可达性义务。
+
+**教训**：当一个分类字段是「多来源取最劣」的聚合结果时，任何依赖某个具体取值的下游逻辑
+都不安全——该取值会被更高严重度的来源覆盖。需要独立生效的信号必须独立保存。
+
+## 全量分布变化（commons-validator，28 步）
+
+| kind | S2（接收者规则前） | S5（接收者规则后） |
+|---|---|---|
+| PASSTHROUGH | 1 | 1 |
+| SIMPLE_DERIVATION | 7 | 7 |
+| CONDITIONAL_SELECT | 7 | **0** |
+| COMPLEX_CONSTRUCTION | 3 | **6** |
+| UNKNOWN | 10 | **14** |
+| **断点合计** | **20（71%）** | **20（71%）** |
+
+断点**集合完全不变**（仍为同样的 20 步），只是其中 7 步的标签由 CONDITIONAL_SELECT
+被更高严重度的类别覆盖。CONDITIONAL_SELECT 归零并非守卫规则失效——`guarded` 标志仍在
+生效并驱动可达性义务——而是这些步骤同时存在接收者或溯源问题，严重度更高。

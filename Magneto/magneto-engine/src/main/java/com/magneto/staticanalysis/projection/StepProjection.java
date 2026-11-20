@@ -28,6 +28,12 @@ public class StepProjection {
 
     private boolean breakpoint = true;
 
+    /**
+     * 调用点是否被条件分支支配（R4）。独立于 kind 保存：接收者规则可能把该步升级成
+     * 严重度更高的 COMPLEX_CONSTRUCTION / UNKNOWN，若只靠 kind 判断，可达性义务就会丢失。
+     */
+    private boolean guarded = false;
+
     private List<ParamProjection> paramProjections = new ArrayList<>();
 
     private List<String> projectedConstraints = new ArrayList<>();

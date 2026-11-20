@@ -36,6 +36,7 @@
 | `calleeSignature` | string | Fᵢ₋₁ 的 Soot 方法签名 |
 | `kind` | ProjectionKind | R1—R5 分类结果，见 §4 |
 | `breakpoint` | boolean | **权威字段**。是否需要走完整定向 fuzz。见下方语义说明 |
+| `guarded` | boolean | 调用点是否被条件分支支配（R4）。**独立于 kind 保存**，见下方说明 |
 | `paramProjections` | ParamProjection[] | 逐实参溯源结果，按 `calleeArgIndex` 升序 |
 | `projectedConstraints` | string[] | 渲染后的约束文本，供 S4 注入 LLM prompt，见 §6 |
 | `taintMapping` | object(int → string[]) | 现有 `MethodParameterMappingAnalysis.taintObjectMap` 的摘要，见 §7 |
@@ -53,6 +54,18 @@
   也无法在埋点里与静态断点区分。升级状态因此按 CVE 独立保存在
   `StepFuzzRunner` 的局部集合中。
 
+### `guarded` 为何不并入 `kind`
+
+`kind` 是多来源取最劣的结果，而接收者规则的严重度（COMPLEX_CONSTRUCTION=3 / UNKNOWN=4）
+高于 CONDITIONAL_SELECT=2。因此一个**既受守卫支配、接收者又不可合成**的步骤，
+其 `kind` 会是 COMPLEX_CONSTRUCTION 或 UNKNOWN，`CONDITIONAL_SELECT` 被覆盖掉。
+若约束渲染按 `kind == CONDITIONAL_SELECT` 判断是否输出可达性义务，这类步骤就会丢掉
+该提示——而它恰恰是最需要提示的。故 `guarded` 单独保存，渲染由它驱动。
+
+真实例子：commons-validator chain-3/step4（`Field.validateForRule → ValidatorAction.executeValidationMethod`）
+在接收者规则引入前是 CONDITIONAL_SELECT，引入后变为 COMPLEX_CONSTRUCTION（接收者 `va` 是 caller 形参），
+但 `guarded` 仍为 true，可达性义务照常输出。
+
 > 误判样本的查法：在 `projection-steps.jsonl` 中筛 `upgraded=true`，
 > 其 `kind` 仍是被误判的那个非断点类别（如 `PASSTHROUGH`），
 > 而 `breakpoint=true`。升级率 = `upgraded` 数 / 尝试跳过数，是分类质量的直接度量。
@@ -60,7 +73,7 @@
 ### 字段集恒定
 
 序列化走 `ChainProjection.toJSONObject()`，显式构造并关闭了 hutool 的 `ignoreNullValue`。
-所以即使 `evidence` 为 null、`complexityScore` 为 null，字段也**一定出现在 JSON 里**（当前共 11 个）。
+所以即使 `evidence` 为 null、`complexityScore` 为 null，字段也**一定出现在 JSON 里**（当前共 12 个）。
 下游脚本可以直接取值，不必判 key 是否存在。
 
 > 这条是被 bug 逼出来的：hutool 的 bean 内省要求 getter/setter 成对，派生的
@@ -146,7 +159,7 @@ callee arg J comes from <结构描述>, but this step is a projection breakpoint
 
 **整步级追加行（按需，各最多一行）：**
 
-- `REACHABILITY OBLIGATION: ...` —— 当 `kind = CONDITIONAL_SELECT`。**这一行不能省**：
+- `REACHABILITY OBLIGATION: ...` —— 当 `guarded = true`。**这一行不能省**：
   实参全部可投影但调用点被守卫支配时，只给构造目标会让 S4 合成一个根本到不了 callee 的种子。
 - `NO DOWNSTREAM REQUIREMENT: ...` —— 当断点步骤存在拿不到下层要求的实参。
   整步只出现一次而非逐实参重复，避免无谓撑大 prompt。

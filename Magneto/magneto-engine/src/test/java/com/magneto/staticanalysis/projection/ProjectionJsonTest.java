@@ -62,6 +62,7 @@ public class ProjectionJsonTest {
         assertEquals(CALLEE, json.getStr("calleeSignature"));
         assertEquals("SIMPLE_DERIVATION", json.getStr("kind"));
         assertEquals(Boolean.FALSE, json.getBool("breakpoint"));
+        assertEquals(Boolean.FALSE, json.getBool("guarded"));
         assertEquals("r0 := @parameter1: java.lang.String", json.getStr("evidence"));
         assertEquals(34, json.getInt("complexityScore").intValue());
         assertEquals(1, json.getInt("branchScore").intValue());
@@ -116,7 +117,7 @@ public class ProjectionJsonTest {
         JSONObject json = projection.toJSONObject().getJSONArray("steps").getJSONObject(0);
 
         for (String field : Arrays.asList("stepIndex", "callerSignature", "calleeSignature", "kind",
-                "breakpoint", "paramProjections", "projectedConstraints",
+                "breakpoint", "guarded", "paramProjections", "projectedConstraints",
                 "taintMapping", "evidence", "complexityScore", "branchScore")) {
             assertTrue("field missing from projection.json: " + field, json.containsKey(field));
         }
