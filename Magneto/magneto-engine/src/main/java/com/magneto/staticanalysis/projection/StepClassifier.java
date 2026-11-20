@@ -133,7 +133,7 @@ public final class StepClassifier {
         }
 
         Local baseLocal = (Local) base;
-        if (isThisLocal(body, baseLocal, invokeUnit)) {
+        if (isThisValue(body, baseLocal, invokeUnit)) {
             return ProjectionKind.PASSTHROUGH;
         }
 
@@ -156,8 +156,12 @@ public final class StepClassifier {
                 && !trace.kind.isBreakpointKind();
     }
 
-    private static boolean isThisLocal(Body body, Local local, Unit useSite) {
-        List<Unit> defs = backwardDefs(body, local, useSite);
+    /** 该值是否就是 caller 自身的接收者（唯一定义且为 `l := @this`）。 */
+    private static boolean isThisValue(Body body, Value value, Unit useSite) {
+        if (!(value instanceof Local)) {
+            return false;
+        }
+        List<Unit> defs = backwardDefs(body, (Local) value, useSite);
         if (defs.size() != 1) {
             return false;
         }
@@ -178,8 +182,15 @@ public final class StepClassifier {
             return traceLocal(body, (Local) value, useSite, depth, evidence);
         }
         if (value instanceof InstanceFieldRef) {
+            InstanceFieldRef fieldRef = (InstanceFieldRef) value;
             evidence.add(value.toString());
-            return ArgTrace.field(DerivationOps.getField(((InstanceFieldRef) value).getField().getName()),
+            // 只有 this 的字段才由种子构造 + 既有 fixContext 回填；
+            // 形参对象的字段（h.value）没有这个保证，记为 CALLER_FIELD 会渲染出
+            // "callee arg N <- receiver object" 这种事实错误的硬约束。
+            if (!isThisValue(body, fieldRef.getBase(), useSite)) {
+                return ArgTrace.unresolved("字段读的基对象不是 this: " + fieldRef.getBase());
+            }
+            return ArgTrace.field(DerivationOps.getField(fieldRef.getField().getName()),
                     ProjectionKind.SIMPLE_DERIVATION);
         }
         if (value instanceof CastExpr) {

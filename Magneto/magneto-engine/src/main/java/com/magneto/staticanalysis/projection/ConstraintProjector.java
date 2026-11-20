@@ -133,6 +133,46 @@ public final class ConstraintProjector {
     }
 
     /**
+     * 用运行时的真实值渲染约束。静态阶段只有占位符；到 fuzz 阶段
+     * {@code Context.getParamsValue()} 已经有 PoC 的实际取值，注入 prompt 的
+     * 必须是真实值，否则"约束注入"注入的是一句描述而非约束。
+     *
+     * @param calleeArgValues 上一步 Context 中 callee 各实参的运行时值
+     */
+    public static List<String> renderWithRuntimeValues(StepProjection step, Object[] calleeArgValues) {
+        Map<Integer, String> requirements = new LinkedHashMap<>();
+        if (calleeArgValues != null) {
+            for (int j = 0; j < calleeArgValues.length; j++) {
+                requirements.put(j, describeValue(calleeArgValues[j]));
+            }
+        }
+        return render(step, requirements);
+    }
+
+    private static final int MAX_VALUE_TEXT = 200;
+
+    /**
+     * 把一个运行时值渲染成可注入 prompt 的短描述。长值截断并显式标注，
+     * 否则 LLM 会把截断结果当成完整约束。
+     */
+    public static String describeValue(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        String text;
+        try {
+            text = String.valueOf(value);
+        } catch (Throwable t) {
+            text = "<unprintable: " + t.getClass().getSimpleName() + ">";
+        }
+        if (text.length() > MAX_VALUE_TEXT) {
+            text = text.substring(0, MAX_VALUE_TEXT) + "...(truncated, " + text.length() + " chars total)";
+        }
+        String type = value.getClass().getName();
+        return value instanceof CharSequence ? "\"" + text + "\" (" + type + ")" : text + " (" + type + ")";
+    }
+
+    /**
      * @param requirement 下层传来的要求值，null 表示没有（下游在断点处中止了传播）
      */
     private static String renderParam(StepProjection step, ParamProjection param, String requirement) {

@@ -18,11 +18,6 @@ public class ConfigPropertyProjectionTest {
     }
 
     @Test
-    public void conservativeFallbackIsOnByDefault() {
-        assertTrue(new ConfigProperty().getProjectionConservative());
-    }
-
-    @Test
     public void passthroughSkipsLlmByDefault() {
         assertTrue(new ConfigProperty().getProjectionSkipLlmForPassthrough());
     }

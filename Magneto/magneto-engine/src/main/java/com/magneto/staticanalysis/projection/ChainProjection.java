@@ -34,7 +34,9 @@ public class ChainProjection {
     }
 
     /**
-     * 实时统计，不缓存——试运行阶段的 promoteToBreakpoint() 必须反映到序列化输出里。
+     * 实时派生，不缓存：始终与 steps 里的 breakpoint 一致。
+     * 注意 projection.json 写盘于 fuzz 之前，故其中的断点数是**静态**判定结果，
+     * 不含运行时升级；升级情况见 projection-steps.jsonl。
      */
     public int getBreakpointCount() {
         int count = 0;

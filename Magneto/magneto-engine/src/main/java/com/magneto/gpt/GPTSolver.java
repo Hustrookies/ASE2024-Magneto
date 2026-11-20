@@ -29,6 +29,14 @@ public class GPTSolver {
 
     private int askCount = 0;
 
+    /** 全进程真实 API 请求数（缓存命中不计）。仅在 -Dmagneto.llm.calls.metric=true 时落盘。 */
+    private static final java.util.concurrent.atomic.AtomicInteger TOTAL_ASK_COUNT =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    public static int getTotalAskCount() {
+        return TOTAL_ASK_COUNT.get();
+    }
+
     private static final Map<String, Pair<String, String>> QUERY_RECORD_MAP = new HashMap<>(); // prompt string ---> (prompt, answer)
 
     public GPTSolver() {
@@ -59,6 +67,7 @@ public class GPTSolver {
         String answer = null;
         if (CONFIG_PROPERTY.getEnableGpt()) {
             askCount++;
+            TOTAL_ASK_COUNT.incrementAndGet();
             answer = gptServer.askGPT(prompt);
         }
 

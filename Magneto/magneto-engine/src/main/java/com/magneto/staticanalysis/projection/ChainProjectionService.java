@@ -30,17 +30,25 @@ public class ChainProjectionService {
     public List<ChainProjection> analyzeAll(List<MethodCallChain> chains) {
         List<ChainProjection> projections = new ArrayList<>();
         for (int i = 0; i < chains.size(); i++) {
-            projections.add(analyze(chains.get(i), "chain-" + i));
+            MethodCallChain chain = chains.get(i);
+            ChainProjection cached = cache.get(chain);
+            // 已缓存则沿用原对象与原 chainId，避免两条 equals 相等的链拿到不同 id
+            projections.add(cached != null ? cached : analyze(chain, "chain-" + i));
         }
         return projections;
     }
 
+    /**
+     * 取该链的投影；正常流程下静态阶段已由 analyzeAll 建好缓存。
+     * 未命中说明调用方传入的链不在被分析的那批里，此时用签名哈希兜底并告警。
+     */
     public ChainProjection analyze(MethodCallChain chain) {
         ChainProjection cached = cache.get(chain);
         if (cached != null) {
             return cached;
         }
-        return analyze(chain, "chain-" + Integer.toHexString(chain.hashCode()));
+        log.warn("projection cache miss, analysing on demand: {}", chain.getVulMethodCall());
+        return analyze(chain, "chain-unlisted-" + Integer.toHexString(chain.hashCode()));
     }
 
     public ChainProjection getCached(MethodCallChain chain) {

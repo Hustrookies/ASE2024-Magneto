@@ -24,6 +24,7 @@ import com.magneto.instrument.state.StateNode;
 import com.magneto.staticanalysis.MethodCall;
 import com.magneto.staticanalysis.MethodCallChain;
 import com.magneto.staticanalysis.projection.ChainProjection;
+import com.magneto.staticanalysis.projection.ConstraintProjector;
 import com.magneto.staticanalysis.projection.DirectValueMapper;
 import com.magneto.staticanalysis.projection.FuzzBudget;
 import com.magneto.staticanalysis.projection.ProjectionKind;
@@ -127,6 +128,10 @@ public class StepFuzzRunner extends FuzzRunner {
                     && Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionInjectConstraints());
             boolean gradeBudget = projectionActive && Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionGradeFuzzBudget());
             int budgetThreshold = gradeBudget ? FuzzBudget.medianComplexity(projections) : 0;
+            // 升级状态按 CVE 独立记录，不改写 ChainProjectionService 缓存里的共享对象：
+            // 同一条链可能对应多个 CVE，若就地 promote，第二个 CVE 会看到一个"天生就是断点"
+            // 的步骤，既不再试运行、也无法在埋点里与静态断点区分。
+            Set<Integer> promotedSteps = new HashSet<>();
 
             for (int i = 1; i < methodCallChain.size(); i++) {
                 try {
@@ -165,24 +170,37 @@ public class StepFuzzRunner extends FuzzRunner {
                     Pair<FuzzResult, Context> stepFuzzResult = null;
 
                     // 非断点步骤：直接合成 + 单次试运行，成功即跳过定向 fuzz（SPEC 3.3）
-                    if (projection != null && !projection.isBreakpoint()) {
-                        stepFuzzResult = this.trySingleShotSynthesis(projection, fuzzAnalysis, solver, fuzzContext,
-                                targetMethodCall, triggeredMethodCall, abstractMethodPrompt);
+                    if (projection != null && !projection.isBreakpoint() && !promotedSteps.contains(i)) {
+                        try {
+                            stepFuzzResult = this.trySingleShotSynthesis(projection, fuzzAnalysis, solver, fuzzContext,
+                                    targetMethodCall, triggeredMethodCall, abstractMethodPrompt);
+                        } catch (Throwable t) {
+                            // 单次合成路径抛异常必须等同于「试运行失败」并升级。
+                            // 若让它冒泡到下面的 catch(Throwable)，整条链会被 break 掉——
+                            // 那就成了「本该验证的步骤被静默跳过」，违反设计红线。
+                            log.warn("[projection] step {} single-shot synthesis threw, promoting to breakpoint: {}",
+                                    i, t.toString());
+                            stepFuzzResult = null;
+                        }
                         trialResult = stepFuzzResult != null;
                         if (trialResult) {
                             fuzzSkipped = true;
                             log.info("[projection] step {} skipped directed fuzzing, kind={}", i, projection.getKind());
                         } else {
                             // 试运行失败：升级为断点，落入下面的完整流程。正确性由这条兜底保证
-                            projection.promoteToBreakpoint();
+                            promotedSteps.add(i);
                             upgraded = true;
                             log.info("[projection] step {} single-shot synthesis failed, promoted to breakpoint", i);
                         }
                     }
 
                     if (stepFuzzResult == null) {
-                        List<String> constraints = (projection == null || !injectConstraints)
-                                ? null : projection.getProjectedConstraints();
+                        // 用 Context 里的真实值渲染约束；静态阶段那份只是占位符，注入它等于没注入
+                        List<String> constraints = null;
+                        if (projection != null && injectConstraints) {
+                            constraints = ConstraintProjector.renderWithRuntimeValues(
+                                    projection, fuzzContext.getLatestContext().getParamsValue());
+                        }
                         long budget = (gradeBudget && projection != null)
                                 ? FuzzBudget.grade(CONFIG_PROPERTY.getMaxFuzzTime(), projection.getComplexityScore(), budgetThreshold)
                                 : CONFIG_PROPERTY.getMaxFuzzTime();
@@ -203,7 +221,8 @@ public class StepFuzzRunner extends FuzzRunner {
                         record.setVulName(vulName);
                         record.setStep(i);
                         record.setKind(projection == null ? null : projection.getKind());
-                        record.setBreakpoint(projection != null && projection.isBreakpoint());
+                        record.setBreakpoint(projection != null
+                                && (projection.isBreakpoint() || promotedSteps.contains(i)));
                         record.setFuzzSkipped(fuzzSkipped);
                         record.setTrialResult(trialResult);
                         record.setUpgraded(upgraded);
@@ -312,9 +331,13 @@ public class StepFuzzRunner extends FuzzRunner {
             answer = DIRECT_SYNTHESIS_ANSWER;
         } else {
             List<String> constraints = Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionInjectConstraints())
-                    ? projection.getProjectedConstraints() : null;
+                    ? ConstraintProjector.renderWithRuntimeValues(projection, latestContext.getParamsValue())
+                    : null;
             Pair<String, String> gptAnswer = solver.getGPTAnswer(targetMethodCall, triggeredMethodCall,
                     abstractMethodPrompt, constraints);
+            // 无论试运行成败都写入缓存：失败后紧接着的完整 fuzz 会用同一个 prompt 再问一次，
+            // 那是完全重复的付费请求（maxRetryCount 次重试还会把它放大）。
+            solver.addGPTAnswerCache(gptAnswer);
             seed = fuzzParser.parseSeed(gptAnswer.getValue(), latestContext, targetMethodCall);
             if (seed == null) {
                 return null;
@@ -341,7 +364,6 @@ public class StepFuzzRunner extends FuzzRunner {
 
         if (!skipLlm) {
             solver.updateGPTServerStatus(query, answer);
-            solver.addGPTAnswerCache(new Pair<>(query, answer));
         }
 
         return processTriggerSeed(beginTime, targetMethodCall, seed, query, answer, validateResult, invokeMethodResult);

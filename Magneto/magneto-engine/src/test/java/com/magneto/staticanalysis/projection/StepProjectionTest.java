@@ -7,8 +7,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * SPEC 3.1 breakpoint 由 kind 派生；SPEC 3.3 promoteToBreakpoint() 在试运行失败后升级断点而不改 kind。
- * 埋点字段 upgraded 用于区分「原生断点」与「运行时升级断点」。
+ * SPEC 3.1：breakpoint 由 kind 派生。运行时升级不改本对象（见 StepRecord / projection-steps.jsonl），
+ * 因为 projection.json 在 fuzz 之前就已写盘，且同一 ChainProjection 会被同链的多个 CVE 共享。
  */
 public class StepProjectionTest {
 
@@ -49,44 +49,10 @@ public class StepProjectionTest {
         assertTrue(step(ProjectionKind.UNKNOWN).isBreakpoint());
     }
 
-    @Test
-    public void promoteToBreakpointMakesANonBreakpointStepBlocking() {
-        StepProjection step = step(ProjectionKind.PASSTHROUGH);
-
-        step.promoteToBreakpoint();
-
-        assertTrue(step.isBreakpoint());
-    }
-
-    @Test
-    public void promoteToBreakpointKeepsTheOriginalKind() {
-        StepProjection step = step(ProjectionKind.PASSTHROUGH);
-
-        step.promoteToBreakpoint();
-
-        assertEquals(ProjectionKind.PASSTHROUGH, step.getKind());
-    }
-
-    @Test
-    public void promoteToBreakpointMarksTheStepUpgraded() {
-        StepProjection step = step(ProjectionKind.PASSTHROUGH);
-        assertFalse(step.isUpgraded());
-
-        step.promoteToBreakpoint();
-
-        assertTrue(step.isUpgraded());
-    }
-
-    @Test
-    public void aNativeBreakpointStaysDistinguishableFromAnUpgradedOne() {
-        StepProjection step = step(ProjectionKind.UNKNOWN);
-
-        step.promoteToBreakpoint();
-
-        assertTrue(step.isBreakpoint());
-        assertFalse("native breakpoints must not be reported as runtime upgrades", step.isUpgraded());
-    }
-
+    /**
+     * 升级语义已移出本类：projection.json 写盘于 fuzz 之前，运行时升级记在 StepRecord 里。
+     * 这里只保留「breakpoint 随 kind 变化」这一静态语义。
+     */
     @Test
     public void reclassifyingAStepResetsItsBreakpointFlag() {
         StepProjection step = step(ProjectionKind.UNKNOWN);

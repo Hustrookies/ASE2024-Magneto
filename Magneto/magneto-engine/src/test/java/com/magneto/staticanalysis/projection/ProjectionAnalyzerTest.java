@@ -29,13 +29,6 @@ public class ProjectionAnalyzerTest {
     }
 
     @Test
-    public void anUnanalysedStepIsNotAnUpgrade() {
-        StepProjection step = ProjectionAnalyzer.unresolvedStep(3, CALLER, CALLEE);
-
-        assertTrue(!step.isUpgraded());
-    }
-
-    @Test
     public void anUnanalysedStepCarriesItsPositionAndSignatures() {
         StepProjection step = ProjectionAnalyzer.unresolvedStep(3, CALLER, CALLEE);
 

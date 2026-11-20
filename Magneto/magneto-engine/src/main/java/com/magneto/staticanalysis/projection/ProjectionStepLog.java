@@ -22,6 +22,11 @@ public class ProjectionStepLog {
     public ProjectionStepLog(File outputDir, boolean enabled) {
         this.enabled = enabled;
         this.file = enabled ? FileUtil.file(outputDir, FILE_NAME) : null;
+        if (this.file != null) {
+            // 每次运行从空文件开始：append 语义下，往同一输出目录重跑会让每一步出现两行，
+            // 而聚合脚本是按行求和的。
+            FileUtil.del(this.file);
+        }
     }
 
     public synchronized void append(StepRecord record) {

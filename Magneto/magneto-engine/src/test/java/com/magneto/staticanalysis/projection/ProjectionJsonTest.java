@@ -62,7 +62,6 @@ public class ProjectionJsonTest {
         assertEquals(CALLEE, json.getStr("calleeSignature"));
         assertEquals("SIMPLE_DERIVATION", json.getStr("kind"));
         assertEquals(Boolean.FALSE, json.getBool("breakpoint"));
-        assertEquals(Boolean.FALSE, json.getBool("upgraded"));
         assertEquals("r0 := @parameter1: java.lang.String", json.getStr("evidence"));
         assertEquals(34, json.getInt("complexityScore").intValue());
         assertEquals(1, json.getInt("branchScore").intValue());
@@ -86,13 +85,13 @@ public class ProjectionJsonTest {
     @Test
     public void breakpointCountIsRecomputedAtSerialisationTime() {
         ChainProjection projection = new ChainProjection("chain-0");
-        StepProjection promoted = step();
-        projection.addStep(promoted);
+        StepProjection reclassified = step();
+        projection.addStep(reclassified);
         assertEquals(0, projection.toJSONObject().getInt("breakpointCount").intValue());
 
-        promoted.promoteToBreakpoint();
+        reclassified.setKind(ProjectionKind.UNKNOWN);
 
-        assertEquals("a runtime promotion must reach the serialised report",
+        assertEquals("breakpointCount 必须是派生值而非缓存值",
                 1, projection.toJSONObject().getInt("breakpointCount").intValue());
     }
 
@@ -117,7 +116,7 @@ public class ProjectionJsonTest {
         JSONObject json = projection.toJSONObject().getJSONArray("steps").getJSONObject(0);
 
         for (String field : Arrays.asList("stepIndex", "callerSignature", "calleeSignature", "kind",
-                "breakpoint", "upgraded", "paramProjections", "projectedConstraints",
+                "breakpoint", "paramProjections", "projectedConstraints",
                 "taintMapping", "evidence", "complexityScore", "branchScore")) {
             assertTrue("field missing from projection.json: " + field, json.containsKey(field));
         }

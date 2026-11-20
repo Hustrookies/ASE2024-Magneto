@@ -96,14 +96,23 @@ def collect(mode_dir, mode, reps):
             info["llm_calls"] = jsonl_calls
             info["llm_source"] = "projection-jsonl"
 
-        # ---- run.log 里的 LLM 调用计数（off/classify 的唯一口径）----
+        # ---- 权威口径：output/llm-calls.txt（真实 API 请求数，所有模式一致）----
+        calls_file = out_dir / "llm-calls.txt"
+        if calls_file.exists():
+            try:
+                info["llm_calls"] = int(calls_file.read_text().strip())
+                info["llm_source"] = "llm-calls.txt (real API requests)"
+            except ValueError:
+                pass
+
+        # ---- run.log 里的 LLM 调用计数（旧口径，含缓存命中，仅在无 llm-calls.txt 时用）----
         run_log = rep_dir / "run.log"
         if run_log.exists():
             info["log_gpt_answers"] = sum(1 for line in run_log.open(errors="replace")
                                           if GPT_ANSWER_MARKER in line)
             if info["llm_calls"] is None:
                 info["llm_calls"] = info["log_gpt_answers"]
-                info["llm_source"] = "run.log marker"
+                info["llm_source"] = "run.log marker (含缓存命中，偏高)"
 
         # ---- report.json ----
         report = read_json(out_dir / "report.json")
@@ -178,9 +187,9 @@ def main():
         "reps_requested": args.reps,
         "reps_completed": len(ok_reps),
         "llm_call_counting": {
-            "full": "sum of llm_calls in projection-steps.jsonl",
-            "off_or_classify": 'occurrences of "the gpt answer:" in run.log',
-            "note": "off/classify 没有埋点文件；给它们加埋点日志会破坏与基线的逐行一致性",
+            "preferred": "output/llm-calls.txt — 真实 API 请求数，缓存命中不计，所有模式同一口径",
+            "fallback_jsonl": "sum of llm_calls in projection-steps.jsonl (仅 full)",
+            "fallback_log": 'occurrences of "the gpt answer:" in run.log — 含缓存命中，偏高，不可跨模式比较',
         },
         "per_rep": per_rep,
         "across_reps": {
@@ -201,7 +210,7 @@ def main():
             "skipped_steps": sum(1 for r in jsonl if r.get("fuzz_skipped")),
             "upgraded_steps": sum(1 for r in jsonl if r.get("upgraded")),
             "total_steps_instrumented": len(jsonl),
-            "llm_calls_total": sum(r.get("llm_calls") or 0 for r in jsonl),
+            "llm_calls_total_from_jsonl": sum(r.get("llm_calls") or 0 for r in jsonl),
         } if jsonl else None,
     }
 

@@ -10,8 +10,9 @@ import java.util.Map;
 /**
  * 调用链单步的投影结果（SPEC 3.1）。
  *
- * breakpoint 是权威字段：初始由 kind 派生，试运行失败后可被 promoteToBreakpoint() 单独抬升，
- * 此时 kind 保持不变，upgraded 用于在埋点里区分「原生断点」与「运行时升级断点」。
+ * breakpoint 是权威字段，由 kind 派生。本对象是**静态阶段**产物：projection.json 在 fuzz 之前
+ * 就已写盘，因此运行时的升级不写回这里，而记在 StepRecord / projection-steps.jsonl 中。
+ * 这样也避免了多个 CVE 共享同一条链的缓存对象时相互污染。
  */
 @Data
 public class StepProjection {
@@ -26,8 +27,6 @@ public class StepProjection {
     private ProjectionKind kind = ProjectionKind.UNKNOWN;
 
     private boolean breakpoint = true;
-
-    private boolean upgraded = false;
 
     private List<ParamProjection> paramProjections = new ArrayList<>();
 
@@ -46,12 +45,5 @@ public class StepProjection {
     public void setKind(ProjectionKind kind) {
         this.kind = kind;
         this.breakpoint = kind.isBreakpointKind();
-    }
-
-    public void promoteToBreakpoint() {
-        if (!this.breakpoint) {
-            this.breakpoint = true;
-            this.upgraded = true;
-        }
     }
 }

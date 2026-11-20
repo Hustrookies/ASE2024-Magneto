@@ -34,9 +34,6 @@ public class ConfigProperty {
     /** SPEC 3.3：off = 基线行为；classify = 只产出 projection.json；full = 跳过 + 注入 + 升级。 */
     private ProjectionMode projectionMode = ProjectionMode.OFF;
 
-    /** SPEC 3.3：true 时 UNKNOWN 一律判为断点（宁可多验证，不可漏验证）。 */
-    private Boolean projectionConservative = true;
-
     /** SPEC 3.3：R1 透传步骤是否完全免 LLM；false 则仍走一次性 LLM 合成。 */
     private Boolean projectionSkipLlmForPassthrough = true;
 
@@ -77,14 +74,6 @@ public class ConfigProperty {
 
     public void setProjectionMode(ProjectionMode projectionMode) {
         this.projectionMode = projectionMode;
-    }
-
-    public Boolean getProjectionConservative() {
-        return projectionConservative;
-    }
-
-    public void setProjectionConservative(Boolean projectionConservative) {
-        this.projectionConservative = projectionConservative;
     }
 
     public Boolean getProjectionSkipLlmForPassthrough() {

@@ -2,6 +2,8 @@ package com.magneto.staticanalysis.projection;
 
 import com.magneto.staticanalysis.projection.fixture.ComplexConstructionFixture;
 import com.magneto.staticanalysis.projection.fixture.ConcatFixture;
+import com.magneto.staticanalysis.projection.fixture.FieldOfParamFixture;
+import com.magneto.staticanalysis.projection.fixture.FieldOfThisFixture;
 import com.magneto.staticanalysis.projection.fixture.ConditionalSelectFixture;
 import com.magneto.staticanalysis.projection.fixture.GuardedCallFixture;
 import com.magneto.staticanalysis.projection.fixture.ParamGuardFixture;
@@ -182,6 +184,32 @@ public class StepClassifierTest {
     public void r5_anUnresolvableArgumentIsRecordedAsUnresolved() {
         StepTrace trace = classify(UnresolvableFixture.class);
 
+        assertEquals(ProjectionSource.UNRESOLVED, trace.getParamProjections().get(0).getSourceKind());
+    }
+
+    // ---------- 字段读的基对象 ----------
+
+    /**
+     * `this.value` 与 `h.value`（h 是形参）在 Jimple 里都是 InstanceFieldRef，
+     * 但只有前者的基对象由种子构造并会被既有 fixContext 回填。
+     * 不加区分地记为 CALLER_FIELD 会渲染出「callee arg N <- receiver object」这种
+     * 事实错误的硬约束，反而误导断点步骤的 LLM。
+     */
+    @Test
+    public void aFieldOfThisIsASimpleDerivationOnTheReceiver() {
+        StepTrace trace = classify(FieldOfThisFixture.class);
+
+        assertEquals(ProjectionKind.SIMPLE_DERIVATION, trace.getKind());
+        ParamProjection p = trace.getParamProjections().get(0);
+        assertEquals(ProjectionSource.CALLER_FIELD, p.getSourceKind());
+    }
+
+    @Test
+    public void aFieldOfAParameterIsNotAttributedToTheReceiver() {
+        StepTrace trace = classify(FieldOfParamFixture.class);
+
+        assertTrue("形参对象的字段无法由 fixContext 回填，必须判为断点",
+                trace.getKind().isBreakpointKind());
         assertEquals(ProjectionSource.UNRESOLVED, trace.getParamProjections().get(0).getSourceKind());
     }
 

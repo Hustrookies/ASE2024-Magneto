@@ -409,4 +409,66 @@ public class ConstraintProjectorTest {
 
         assertTrue("实际: " + line, line.contains(ConstraintProjector.NO_REQUIREMENT));
     }
+
+    // ---------- 运行时取值渲染 ----------
+
+    /**
+     * 静态阶段只有占位符；到 fuzz 阶段 Context 里已经有 PoC 的真实值，
+     * 注入 prompt 的必须是真实值，否则"约束注入"注入的是一句描述而不是约束。
+     */
+    @Test
+    public void describeValueRendersAStringAsAQuotedLiteralWithItsType() {
+        String d = ConstraintProjector.describeValue("class");
+
+        assertTrue("实际: " + d, d.contains("\"class\""));
+        assertTrue("实际: " + d, d.contains("java.lang.String"));
+    }
+
+    @Test
+    public void describeValueRendersNullExplicitly() {
+        assertEquals("null", ConstraintProjector.describeValue(null));
+    }
+
+    @Test
+    public void describeValueRendersANumberWithItsType() {
+        String d = ConstraintProjector.describeValue(Integer.valueOf(42));
+
+        assertTrue("实际: " + d, d.contains("42") && d.contains("java.lang.Integer"));
+    }
+
+    @Test
+    public void describeValueTruncatesLongValuesSoThePromptStaysSmall() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 4000; i++) {
+            sb.append('x');
+        }
+
+        String d = ConstraintProjector.describeValue(sb.toString());
+
+        assertTrue("实际长度 " + d.length(), d.length() < 400);
+        assertTrue("截断必须显式标注，否则 LLM 会把截断值当成完整约束", d.contains("truncated"));
+    }
+
+    @Test
+    public void runtimeRenderingPutsTheActualValueIntoTheConstraint() {
+        StepProjection s = step(ProjectionKind.PASSTHROUGH,
+                param(0, ProjectionSource.CALLER_PARAM, 1));
+
+        List<String> lines = ConstraintProjector.renderWithRuntimeValues(s, new Object[]{"class"});
+
+        assertTrue("实际: " + lines.get(0), lines.get(0).contains("\"class\""));
+        assertFalse("不得再出现静态阶段的占位符", lines.get(0).contains("captured by executing"));
+    }
+
+    @Test
+    public void runtimeRenderingFallsBackWhenAValueIsMissing() {
+        StepProjection s = step(ProjectionKind.PASSTHROUGH,
+                param(0, ProjectionSource.CALLER_PARAM, 0),
+                param(1, ProjectionSource.CALLER_PARAM, 1));
+
+        List<String> lines = ConstraintProjector.renderWithRuntimeValues(s, new Object[]{"v"});
+
+        assertEquals(2, lines.size());
+        assertTrue(lines.get(1).contains(ConstraintProjector.NO_REQUIREMENT));
+    }
 }

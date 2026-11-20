@@ -280,6 +280,13 @@ public class Magneto {
             // output gpt answer
             GPTSolver.SaveGPTAnswerCache(FileUtil.file(GlobalConfiguration.OUTPUT_DIR_PATH, "gpt-cache.json"));
 
+            // opt-in 度量：真实 LLM API 请求数。默认不写，保证 off 模式产物与基线一致。
+            // 需要跨模式可比的成本指标时以 -Dmagneto.llm.calls.metric=true 开启。
+            if (Boolean.getBoolean("magneto.llm.calls.metric")) {
+                FileUtil.writeUtf8String(String.valueOf(GPTSolver.getTotalAskCount()),
+                        FileUtil.file(GlobalConfiguration.OUTPUT_DIR_PATH, "llm-calls.txt"));
+            }
+
             return fuzzChainResults;
         }, "fuzzing-vulnerable-methodcall-chain");
     }

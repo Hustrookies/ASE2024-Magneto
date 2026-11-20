@@ -37,13 +37,13 @@ public class ChainProjectionTest {
     }
 
     @Test
-    public void breakpointCountReflectsARuntimePromotion() {
+    public void breakpointCountFollowsAReclassifiedStep() {
         ChainProjection projection = new ChainProjection("chain-0");
         StepProjection passthrough = step(1, ProjectionKind.PASSTHROUGH);
         projection.addStep(passthrough);
         assertEquals(0, projection.getBreakpointCount());
 
-        passthrough.promoteToBreakpoint();
+        passthrough.setKind(ProjectionKind.UNKNOWN);
 
         assertEquals(1, projection.getBreakpointCount());
     }
