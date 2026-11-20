@@ -36,6 +36,15 @@ public class ConfigPropertyProjectionTest {
         assertFalse(new ConfigProperty().getProjectionGradeFuzzBudget());
     }
 
+    /**
+     * 约束注入默认开启；关掉它是 SPEC 5「约束注入干扰」风险的回退手段，
+     * 也是把「跳过收益」与「注入影响」分开测量的消融开关。
+     */
+    @Test
+    public void constraintInjectionIsOnByDefault() {
+        assertTrue(new ConfigProperty().getProjectionInjectConstraints());
+    }
+
     @Test
     public void onlyFullModeAffectsFuzzing() {
         assertFalse(ProjectionMode.OFF.affectsFuzzing());

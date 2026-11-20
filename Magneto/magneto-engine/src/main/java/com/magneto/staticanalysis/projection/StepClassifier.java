@@ -95,7 +95,74 @@ public final class StepClassifier {
             worst = worse(worst, ProjectionKind.CONDITIONAL_SELECT);
         }
 
+        // 接收者分析：实参可投影不代表这一步可跳过
+        worst = worse(worst, classifyReceiver(invokeExpr, callerBody, invokeUnit, maxDepth, evidence));
+
         return new StepTrace(worst, projections, join(evidence), guarded);
+    }
+
+    /**
+     * 实例调用的接收者也必须是种子能提供的对象，否则到不了 callee。
+     * R1—R5 只约束实参，这一条是它们的必要补充。
+     *
+     * 放行的情形只有三种：
+     * <ol>
+     *   <li>静态调用（没有接收者）；</li>
+     *   <li>接收者就是 caller 自身（`this`），种子构造阶段本来就持有它；</li>
+     *   <li>接收者是 `this` 的**直接字段读**（如 `this.objectMapper.readValue(...)`）——
+     *       种子构造 caller 时会跑构造函数初始化字段，且 Magneto 既有的 fixContext
+     *       「fix seed object context」分支会从 Context 回填接收者字段。
+     *       实证依据：idworker 案例中这类步骤 10 次跳过全部成功、0 次升级。</li>
+     * </ol>
+     *
+     * 其余一律升级为断点。典型反例是 QLExpress 的 {@code list.get(0).getObjectInner(parent)}：
+     * 实参 parent 是纯透传的 caller 形参，但接收者是运行时派生对象，没有任何机制能回填，
+     * 直接合成必然失败。该规则只会增加断点、不会减少，因此不可能违反
+     * 「不允许把断点判成非断点」的红线。
+     */
+    private static ProjectionKind classifyReceiver(InvokeExpr invokeExpr, Body body, Unit invokeUnit,
+                                                   int depth, List<String> evidence) {
+        if (!(invokeExpr instanceof InstanceInvokeExpr)) {
+            return ProjectionKind.PASSTHROUGH;
+        }
+
+        Value base = ((InstanceInvokeExpr) invokeExpr).getBase();
+        if (!(base instanceof Local)) {
+            evidence.add("receiver is not a local: " + base);
+            return ProjectionKind.UNKNOWN;
+        }
+
+        Local baseLocal = (Local) base;
+        if (isThisLocal(body, baseLocal, invokeUnit)) {
+            return ProjectionKind.PASSTHROUGH;
+        }
+
+        ArgTrace baseTrace = traceLocal(body, baseLocal, invokeUnit, depth, evidence);
+        if (isDirectFieldOfThis(baseTrace)) {
+            return ProjectionKind.PASSTHROUGH;
+        }
+
+        evidence.add("receiver is not synthesizable: " + baseLocal.getName()
+                + " traces to " + baseTrace.kind + " / " + baseTrace.source + " " + baseTrace.ops);
+        // 接收者即使能溯源到形参，种子也得额外提供一个已正确初始化的实例，
+        // 这不是值级映射能解决的，因此至少是构造类断点。
+        return baseTrace.kind.isBreakpointKind() ? baseTrace.kind : ProjectionKind.COMPLEX_CONSTRUCTION;
+    }
+
+    /** 只认「this 的直接字段读」这一跳；再经 getter 或多层派生就不放行。 */
+    private static boolean isDirectFieldOfThis(ArgTrace trace) {
+        return trace.source == ProjectionSource.CALLER_FIELD
+                && trace.ops.size() <= 1
+                && !trace.kind.isBreakpointKind();
+    }
+
+    private static boolean isThisLocal(Body body, Local local, Unit useSite) {
+        List<Unit> defs = backwardDefs(body, local, useSite);
+        if (defs.size() != 1) {
+            return false;
+        }
+        Unit def = defs.get(0);
+        return def instanceof IdentityStmt && ((IdentityStmt) def).getRightOp() instanceof ThisRef;
     }
 
     // ---------------------------------------------------------------- 实参溯源

@@ -47,6 +47,22 @@ public class ConfigProperty {
      */
     private Boolean projectionGradeFuzzBudget = false;
 
+    /**
+     * 是否把投影约束文本注入 LLM prompt。默认开启。
+     * 关掉即得到「只跳过、不注入」的消融组，用于把「跳过带来的收益」与
+     * 「注入对断点步骤的影响」这两个变量分开——SPEC 5 把「约束注入干扰」
+     * 列为需要能回退的风险项，回退手段就是这个开关。
+     */
+    private Boolean projectionInjectConstraints = true;
+
+    public Boolean getProjectionInjectConstraints() {
+        return projectionInjectConstraints;
+    }
+
+    public void setProjectionInjectConstraints(Boolean projectionInjectConstraints) {
+        this.projectionInjectConstraints = projectionInjectConstraints;
+    }
+
     public Boolean getProjectionGradeFuzzBudget() {
         return projectionGradeFuzzBudget;
     }

@@ -123,6 +123,8 @@ public class StepFuzzRunner extends FuzzRunner {
             ChainProjection chainProjection = projectionActive ? context.getChainProjectionService().analyze(chain) : null;
             List<StepProjection> projections = chainProjection == null ? null : chainProjection.getSteps();
             ProjectionStepLog stepLog = new ProjectionStepLog(GlobalConfiguration.OUTPUT_DIR, projectionActive);
+            boolean injectConstraints = projectionActive
+                    && Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionInjectConstraints());
             boolean gradeBudget = projectionActive && Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionGradeFuzzBudget());
             int budgetThreshold = gradeBudget ? FuzzBudget.medianComplexity(projections) : 0;
 
@@ -179,7 +181,8 @@ public class StepFuzzRunner extends FuzzRunner {
                     }
 
                     if (stepFuzzResult == null) {
-                        List<String> constraints = projection == null ? null : projection.getProjectedConstraints();
+                        List<String> constraints = (projection == null || !injectConstraints)
+                                ? null : projection.getProjectedConstraints();
                         long budget = (gradeBudget && projection != null)
                                 ? FuzzBudget.grade(CONFIG_PROPERTY.getMaxFuzzTime(), projection.getComplexityScore(), budgetThreshold)
                                 : CONFIG_PROPERTY.getMaxFuzzTime();
@@ -308,8 +311,10 @@ public class StepFuzzRunner extends FuzzRunner {
             query = DIRECT_SYNTHESIS_QUERY;
             answer = DIRECT_SYNTHESIS_ANSWER;
         } else {
+            List<String> constraints = Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionInjectConstraints())
+                    ? projection.getProjectedConstraints() : null;
             Pair<String, String> gptAnswer = solver.getGPTAnswer(targetMethodCall, triggeredMethodCall,
-                    abstractMethodPrompt, projection.getProjectedConstraints());
+                    abstractMethodPrompt, constraints);
             seed = fuzzParser.parseSeed(gptAnswer.getValue(), latestContext, targetMethodCall);
             if (seed == null) {
                 return null;
