@@ -208,3 +208,25 @@ validator 三臂 fuzz 耗时几乎相同（52969 / 53369 / 50596 ms），而其�
    应在论文中按工程规模分层报告，而非给单一平均数。
 5. `config.projection-grade-fuzz-budget`（复杂度分级预算）已实现但默认关闭，
    可作为独立消融项在阶段 B 评估。
+
+---
+
+## 附：原始运行目录的留存情况
+
+单次运行会在运行目录下反编译全部依赖（`.dummy/`），三个案例约 60 次运行共占 9.3 GB。
+最终批次（`runs/v3-validator`、`runs/v3-idworker`、`runs/v3-qlexpress`）保留在本地（未纳入版本控制，
+`runs/` 已在 `.gitignore` 中）；其余中间批次——含 S0 基线复跑、S1–S4 各阶段验证、
+接收者修复前后的对照、以及第一版消融——在结论落档后已删除，共释放 7.1 GB。
+
+被删除批次的**结论性数据均已固化在版本控制内**：
+
+| 批次 | 固化位置 |
+|---|---|
+| S0 基线 | `docs/baseline-snapshot/`（产物 + `compare.py` + 构建警告清单） |
+| S2 静态分类 | `docs/s2-evidence/projection.json`、`docs/projection-annotation.md` |
+| S3 约束渲染 | `docs/s3-evidence/projection.json` |
+| S4 集成验证 | `docs/s4-evidence/VERIFICATION.md`、`docs/s4-evidence/projection-steps.jsonl` |
+| S5 最终实验 | `docs/s5-evidence/RESULTS.md`、`docs/s5-evidence/data/`（各臂 summary.json + steps.csv + chains.csv） |
+
+需要复现任何一批时，用 §1 的命令重跑即可；`docs/baseline-snapshot/compare.py`
+可机械核对 `off` 模式是否仍与基线一致。
