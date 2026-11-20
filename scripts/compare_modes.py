@@ -87,37 +87,47 @@ def report(exp_dir):
             print(f"[{m}] 静态分类: 步骤 {total} | 断点 {bp} ({100 * bp / max(total, 1):.0f}%) | "
                   f"{rep0['kind_histogram']}")
 
-    # ---- 配对比较：同一 (rep, chain, vul) 下 off vs full 的 success_step ----
-    if "off" in modes and "full" in modes:
-        off = chain_success_series(Path(exp_dir) / "off")
-        full = chain_success_series(Path(exp_dir) / "full")
-        common = sorted(set(off) & set(full))
+    # ---- 配对比较：同一 (rep, chain, vul) 下 基线臂 vs 其它各臂 的 success_step ----
+    baseline = "off" if "off" in modes else sorted(modes)[0]
+    base_series = chain_success_series(Path(exp_dir) / baseline)
+    verdicts = {}
+
+    for arm in sorted(modes):
+        if arm == baseline:
+            continue
+        arm_series = chain_success_series(Path(exp_dir) / arm)
+        common = sorted(set(base_series) & set(arm_series))
+        if not common:
+            continue
+
         print(f"\n{'-' * 100}")
-        print(f"配对比较（同一 rep + 同一链）: {len(common)} 对")
+        print(f"配对比较 {baseline} vs {arm}（同一 rep + 同一链）: {len(common)} 对")
         better = worse = same = 0
         for key in common:
-            delta = full[key] - off[key]
+            delta = arm_series[key] - base_series[key]
             if delta > 0:
                 better += 1
             elif delta < 0:
                 worse += 1
             else:
                 same += 1
-        print(f"  full 更好: {better}   持平: {same}   full 更差: {worse}")
+        print(f"  {arm} 更好: {better}   持平: {same}   {arm} 更差: {worse}")
 
-        off_mean = sum(off[k] for k in common) / len(common) if common else 0
-        full_mean = sum(full[k] for k in common) / len(common) if common else 0
-        print(f"  配对均值 success_step: off={off_mean:.3f}  full={full_mean:.3f}  "
-              f"差值={full_mean - off_mean:+.3f}")
+        base_mean = sum(base_series[k] for k in common) / len(common)
+        arm_mean = sum(arm_series[k] for k in common) / len(common)
+        print(f"  配对均值 success_step: {baseline}={base_mean:.3f}  {arm}={arm_mean:.3f}  "
+              f"差值={arm_mean - base_mean:+.3f}")
 
-        verdict = "PASS" if full_mean >= off_mean else "NEEDS ATTRIBUTION"
-        print(f"\n  SPEC S5 验收 1（full 成功率不低于 off）: {verdict}")
+        verdict = "PASS" if arm_mean >= base_mean else "NEEDS ATTRIBUTION"
+        print(f"\n  SPEC S5 验收 1（{arm} 成功率不低于 {baseline}）: {verdict}")
         if verdict != "PASS":
-            print("  需逐条归因：区分「投影误判透传」（看 upgraded 计数）与「fuzz/LLM 随机波动」")
-            print("  （后者需看标准差与配对差异的分布，单次差异不构成结论）")
-        return {"off_mean": off_mean, "full_mean": full_mean, "verdict": verdict,
-                "pairs": len(common), "better": better, "same": same, "worse": worse}
-    return None
+            print("  需逐条归因：先看 upgraded 计数区分「投影误判」与「fuzz/LLM 随机波动」，")
+            print("  再看标准差与配对差异分布——单次差异不构成结论。")
+        verdicts[arm] = {"baseline": baseline, "verdict": verdict,
+                         "base_mean": base_mean, "arm_mean": arm_mean,
+                         "pairs": len(common), "better": better, "same": same, "worse": worse}
+
+    return verdicts
 
 
 def main():
@@ -132,13 +142,14 @@ def main():
     print("=" * 100)
     print("阶段 A 总验收（SPEC S5 验收 1）汇总")
     print("=" * 100)
-    for exp, r in results.items():
-        if r:
-            print(f"  {Path(exp).name:<28} {r['verdict']:<20} "
-                  f"off={r['off_mean']:.3f} full={r['full_mean']:.3f} "
-                  f"(配对 {r['pairs']}，更好 {r['better']}/持平 {r['same']}/更差 {r['worse']})")
-        else:
-            print(f"  {Path(exp).name:<28} 无可比较的 off/full 组合")
+    for exp, verdicts in results.items():
+        if not verdicts:
+            print(f"  {Path(exp).name:<28} 无可比较的臂")
+            continue
+        for arm, v in verdicts.items():
+            print(f"  {Path(exp).name:<20} {v['baseline']} vs {arm:<16} {v['verdict']:<18} "
+                  f"{v['base_mean']:.3f} -> {v['arm_mean']:.3f} "
+                  f"(配对 {v['pairs']}，更好 {v['better']}/持平 {v['same']}/更差 {v['worse']})")
     return 0
 
 

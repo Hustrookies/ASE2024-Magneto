@@ -6,7 +6,9 @@
 #       --project <客户端工程路径> --cve <CVE 名> --mode <off|classify|full> \
 #       --out <输出根目录> [--reps N] [--fuzz-time MS] [--chains N] [--retry N]
 #       [--skip-fuzz] [--jar <jar 路径>] [--groundtruth <路径>] [--keep-cache]
-#       [--no-inject-constraints]
+#       [--no-inject-constraints] [--tag <子目录名>]
+#
+# --tag                    结果子目录名，默认取 --mode。消融实验用它区分同一模式的多个臂。
 #
 # --no-inject-constraints  消融用：仍然跳过非断点步骤，但不把约束文本注入 prompt。
 #                          用来把「跳过带来的收益」与「注入对断点步骤的影响」分开测量。
@@ -38,6 +40,7 @@ JAR="$REPO_ROOT/Magneto/magneto-engine/target/magneto-engine-1.0.jar"
 GROUNDTRUTH="$REPO_ROOT/Magneto/groundtruth"
 KEEP_CACHE=0
 INJECT=1
+TAG=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,6 +57,7 @@ while [[ $# -gt 0 ]]; do
     --groundtruth) GROUNDTRUTH="$2"; shift 2 ;;
     --keep-cache)  KEEP_CACHE=1; shift ;;
     --no-inject-constraints) INJECT=0; shift ;;
+    --tag)         TAG="$2"; shift 2 ;;
     -h|--help)     sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
@@ -79,7 +83,8 @@ if [[ $SKIP_FUZZ -eq 0 && "$MODE" != "off" ]]; then
   : "${MAGNETO_GPT_TOKEN:?MAGNETO_GPT_TOKEN must be set for a fuzzing run}"
 fi
 
-MODE_DIR="$OUT/$MODE"
+# --tag 让同一实验目录下能放多个同模式不同配置的臂（如消融：full 与 full-noinject）
+MODE_DIR="$OUT/${TAG:-$MODE}"
 mkdir -p "$MODE_DIR"
 
 FUZZ_ARGS=()
