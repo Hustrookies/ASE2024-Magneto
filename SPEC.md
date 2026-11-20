@@ -101,9 +101,10 @@ for 每个步骤 i（现有循环 L110）:
                                                  // R2: GPTSolver 单次调用（约束注入提示，不进重试循环）
         result = invokeMethod(seed) + validateInvokeResult   // 单次试运行
         if 成功: 上下文传播（addNewContext），记 fuzz_skipped=true，continue
-        else:    p.promoteToBreakpoint()，记 upgraded=true，落入下方完整流程
+        else:    promotedSteps.add(i)（按 CVE 独立，不改写共享缓存对象），记 upgraded=true，落入下方完整流程
     // 断点步骤（= 原流程 + 约束注入）:
-    PromptGenerator 附加 p.projectedConstraints 段落
+    PromptGenerator 附加约束段落——用 Context 的真实值经 renderWithRuntimeValues 重新渲染，
+    而非 projection.json 里那份静态占位文本
     analysisMethodCallStep → preCheck → fuzzing(...)   // 原逻辑不动
     复杂度分数分级 fuzz 时间预算（高分断点给满 maxFuzzTime，低分给 1/2）
 ```
@@ -113,8 +114,11 @@ for 每个步骤 i（现有循环 L110）:
 | 配置项 | 取值 | 语义 |
 |---|---|---|
 | `config.projection-mode` | `off` / `classify` / `full` | off=基线行为；classify=只计算并输出 projection.json，不改 fuzz 行为；full=跳过+注入+升级 |
-| `config.projection-conservative` | true/false（默认 true） | true 时 UNKNOWN 一律断点 |
+| ~~`config.projection-conservative`~~ | ~~true/false~~ | **实现时移除**。原意是控制「UNKNOWN 是否一律断点」，但 UNKNOWN→断点正是本方法的保守性红线（§3.2 R5），一个只能让工具变得不安全的开关不是有效的消融项；保留一个绑定后无人读取的死配置更糟。 |
 | `config.projection-skip-llm-for-passthrough` | true/false（默认 true） | R1 步骤是否完全免 LLM（false 则仍走一次性 LLM 合成） |
+| `config.projection-inject-constraints` | true/false（默认 true） | **新增**（超出原 SPEC）。关掉即「只跳过、不注入」，用于把跳过收益与注入影响这两个变量分开；也是 §5「约束注入干扰」的实际回退手段——原 SPEC 写的回退项 `projection-skip-llm-for-passthrough` 管的是 R1 免 LLM，管不到注入。 |
+| `config.projection-grade-fuzz-budget` | true/false（默认 **false**） | §3.3 任务 5 的复杂度分级预算。已实现但默认关闭：开启会给 off/full 对照引入第二个变量，使成功率差异无法归因到投影本身（§5 也已把它列为可砍项）。留给阶段 B 做消融。 |
+| `-Dmagneto.llm.calls.metric=true` | JVM 系统属性 | **新增**。把真实 LLM API 请求数写入 `output/llm-calls.txt`。默认不写，保证 off 模式产物与基线一致。 |
 
 **日志埋点（每步骤一行 JSON，供阶段 B 实验直接汇总）：**
 `{chain_id, vul_name, step, kind, breakpoint, fuzz_skipped, trial_result, upgraded, step_time_ms, llm_calls, complexity, branch}`
@@ -219,6 +223,7 @@ for 每个步骤 i（现有循环 L110）:
 | Soot def 链溯源在真实代码上大量 UNKNOWN | S2 真实链断点率 >80% | 收紧为二分类"透传 vs 其他"（只实现 R1+R5），仍可支撑实验（断点率上升但成功率安全） |
 | `taintObjectMap` 精度不足（深度 2 限制） | S1 映射空集比例过高 | 临时调 `maxInterAnalysisScope=3` 评估耗时；或仅对映射非空的实参做投影 |
 | 直接合成种子成功率低 | S4 试运行大量失败升级 | 保留升级机制兜底（正确性不受损，效率收益减少）；R2 改为全部走 LLM 单次合成 |
+| 约束注入干扰断点步骤 | full 的断点步骤成功率低于 off | 关 `config.projection-inject-constraints` 得到「只跳过、不注入」臂，用三臂对照分离两个变量（原写的回退项 `projection-skip-llm-for-passthrough` 管不到注入） |
 | GPT 缓存污染对照实验 | off/full 结果异常一致 | 实验脚本强制清 `gpt-cache.json` 并分目录隔离输出 |
 | 时间不够（17 天总盘子） | S3 结束仍晚于 11/18 | S4 砍掉"复杂度分级预算"（纯装饰项），保跳过+升级主链路 |
 

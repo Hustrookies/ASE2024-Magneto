@@ -14,12 +14,14 @@
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `chainId` | string | 链标识，`chain-<i>`，i 为在 puring 链列表中的下标 |
+| `chainId` | string | 链标识，正常为 `chain-<i>`（i 为在 puring 链列表中的下标）。若 fuzz 阶段遇到未被静态阶段分析过的链，退化为 `chain-unlisted-<hashCode 十六进制>` 并打 WARN |
 | `steps` | StepProjection[] | 逐步骤投影，**长度 = 链长 − 1**，顺序与 `reverseChainList` 一致 |
 | `breakpointCount` | int | `steps` 中 `breakpoint=true` 的个数 |
 
-`breakpointCount` 是**序列化时实时计算**的派生值，不是存储字段。原因：S4 在试运行失败后会调用
-`promoteToBreakpoint()` 抬升断点状态，缓存该计数会让报告漏掉运行时升级。
+`breakpointCount` 是**序列化时实时计算**的派生值，不是存储字段，始终与 `steps` 里的 `breakpoint` 一致。
+
+> 注意：`projection.json` 写盘于 fuzz **之前**，因此其中的断点数是纯静态判定结果，
+> **不含运行时升级**。升级情况见 `projection-steps.jsonl` 的 `upgraded` 字段。
 
 ## 2. StepProjection
 
@@ -34,7 +36,6 @@
 | `calleeSignature` | string | Fᵢ₋₁ 的 Soot 方法签名 |
 | `kind` | ProjectionKind | R1—R5 分类结果，见 §4 |
 | `breakpoint` | boolean | **权威字段**。是否需要走完整定向 fuzz。见下方语义说明 |
-| `upgraded` | boolean | 是否为 S4 试运行失败后**运行时抬升**的断点（区别于原生断点） |
 | `paramProjections` | ParamProjection[] | 逐实参溯源结果，按 `calleeArgIndex` 升序 |
 | `projectedConstraints` | string[] | 渲染后的约束文本，供 S4 注入 LLM prompt，见 §6 |
 | `taintMapping` | object(int → string[]) | 现有 `MethodParameterMappingAnalysis.taintObjectMap` 的摘要，见 §7 |
@@ -42,18 +43,24 @@
 | `complexityScore` | int \| null | 复用 `ComplexityAnalyzer.compute(caller, callee)` |
 | `branchScore` | int \| null | 复用 `BranchAnalyzer.compute(caller, callee)` |
 
-### `kind` / `breakpoint` / `upgraded` 三者的关系
+### `kind` 与 `breakpoint` 的关系
 
-- `setKind(k)` 会同时把 `breakpoint` 置为 `k.isBreakpointKind()`；
-- `promoteToBreakpoint()` 只抬 `breakpoint` 与 `upgraded`，**不改 `kind`**；
-- 因此 `kind` 描述「静态分析怎么看这一步」，`breakpoint` 描述「S4 实际怎么处理这一步」。
-  **两者冲突时以 `breakpoint` 为准。** 一个 `kind=PASSTHROUGH` 但 `breakpoint=true, upgraded=true`
-  的步骤，意味着静态投影认为可跳过、但试运行失败了，这类步骤正是阶段 B 要统计的误判样本。
+- `setKind(k)` 会同时把 `breakpoint` 置为 `k.isBreakpointKind()`，二者在静态阶段恒一致；
+- `StepProjection` 是**静态阶段产物**，不承载运行时状态。试运行失败导致的升级记录在
+  `projection-steps.jsonl` 的 `upgraded` 字段里，不回写本对象；
+- 这是刻意的：同一条链可能对应多个 CVE，`ChainProjectionService` 的缓存对象会被它们共享。
+  若就地 mutate，第二个 CVE 会看到一个「天生就是断点」的步骤，既不再试运行，
+  也无法在埋点里与静态断点区分。升级状态因此按 CVE 独立保存在
+  `StepFuzzRunner` 的局部集合中。
+
+> 误判样本的查法：在 `projection-steps.jsonl` 中筛 `upgraded=true`，
+> 其 `kind` 仍是被误判的那个非断点类别（如 `PASSTHROUGH`），
+> 而 `breakpoint=true`。升级率 = `upgraded` 数 / 尝试跳过数，是分类质量的直接度量。
 
 ### 字段集恒定
 
 序列化走 `ChainProjection.toJSONObject()`，显式构造并关闭了 hutool 的 `ignoreNullValue`。
-所以即使 `evidence` 为 null、`complexityScore` 为 null，字段也**一定出现在 JSON 里**。
+所以即使 `evidence` 为 null、`complexityScore` 为 null，字段也**一定出现在 JSON 里**（当前共 11 个）。
 下游脚本可以直接取值，不必判 key 是否存在。
 
 > 这条是被 bug 逼出来的：hutool 的 bean 内省要求 getter/setter 成对，派生的
@@ -148,10 +155,17 @@ callee arg J comes from <结构描述>, but this step is a projection breakpoint
 下标 0 是 F₀ 的实参要求（PoC 值），步骤 i 消费 Fᵢ₋₁ 的要求、产出 Fᵢ 的要求。
 断点处传播中止——无法静态求逆就不伪造映射。
 
-`classify` 阶段还没有 PoC 具体值，用占位文本
+`projection.json` 里的 `projectedConstraints` 是**静态阶段**渲染的，此时 PoC 尚未执行，
+要求值用带实参下标的占位文本：
 `the runtime value of PoC arg J of the vulnerable function (F0), captured by executing the ground-truth testcase`
-（带实参下标，否则同层所有约束文本会完全一样，人工核对时无从对应）。
-`full` 模式下 S4 会用 `Context.getParamsValue()` 的真实值重新渲染。
+（带下标是必要的，否则同层所有约束文本完全一样，人工核对时无从对应）。
+
+**注入 prompt 的不是这份占位文本。** `full` 模式下 `StepFuzzRunner` 在每一步调用
+`ConstraintProjector.renderWithRuntimeValues(step, latestContext.getParamsValue())`
+用 Context 里的**真实运行时值**重新渲染，值经 `describeValue` 格式化：
+字符串加引号并附类型（`"class" (java.lang.String)`）、null 显式写作 `null`、
+超过 200 字符截断并标注 `...(truncated, N chars total)`——截断必须显式标注，
+否则 LLM 会把截断值当成完整约束。
 
 ## 7. taintMapping
 
@@ -193,8 +207,23 @@ callee arg J comes from <结构描述>, but this step is a projection breakpoint
 3. **守卫规则不区分条件来源**。SPEC R4 原文是「条件依赖非形参污点值」，实现上只要调用点被条件
    支配就判 `CONDITIONAL_SELECT`。理由：形参守卫同样是必须满足的约束，漏判代价（白跑一次试运行
    再升级）高于多判代价（本来就要跑的定向 fuzz）。
+4. **字段读只在基对象为 `this` 时才记 `CALLER_FIELD`**。`h.value`（h 为形参）在 Jimple 里
+   同样是 `InstanceFieldRef`，但种子的接收者回填机制覆盖不到它，故记为 `UNRESOLVED`（断点）。
+   接收者分析同理：仅静态调用、`this`、`this` 的直接字段读（算子链长度 ≤ 1）三种情形放行。
+   这三条是 S5 在 QLExpress 上发现系统性误判后补的，详见
+   [projection-annotation.md](projection-annotation.md) 与 §10 的实证依据。
 
-## 10. 复现与当前规模
+## 10. 附产物：llm-calls.txt
+
+以 `-Dmagneto.llm.calls.metric=true` 启动时，输出目录额外生成 `llm-calls.txt`，
+内容为本次运行**真实发出的 LLM API 请求数**（缓存命中不计）。默认不生成，
+因此不影响 `off` 模式与基线的产物一致性。
+
+之所以需要它：`run.log` 里的 `the gpt answer:` 行在**缓存命中和每次重试时都会打印**，
+用它计数会系统性偏高，且与埋点里的 `llm_calls`（真实请求数）口径不一致，
+跨模式比较会得出错误结论。`scripts/run_projection_experiment.sh` 默认开启该度量。
+
+## 11. 复现与当前规模
 
 ```bash
 cd <repo>/runs/<name>
