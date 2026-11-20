@@ -28,10 +28,20 @@ public class PromptGenerator {
     private final Map<PromptQueryRecord, String> PROMPT_RECORD_MAP = new HashMap<>();
     private final MethodCall targetMethodCall;
     private final MethodCall triggeredMethodCall;
+    private List<String> projectedConstraints;
 
     public PromptGenerator(MethodCall targetMethodCall, MethodCall triggeredMethodCall) {
         this.targetMethodCall = targetMethodCall;
         this.triggeredMethodCall = triggeredMethodCall;
+    }
+
+    /**
+     * 断点步骤的投影约束（SPEC 3.3）。注入后 prompt 内容改变，
+     * GPTSolver 的缓存 key 随之改变——这是预期的：约束不同就该重新问。
+     */
+    public PromptGenerator withProjectedConstraints(List<String> projectedConstraints) {
+        this.projectedConstraints = projectedConstraints;
+        return this;
     }
 
     public String generate() throws IOException {
@@ -75,6 +85,14 @@ public class PromptGenerator {
         if (needText) {
             String textContent = getTextContent();
             sb.append(textContent);
+        }
+
+        if (projectedConstraints != null && !projectedConstraints.isEmpty()) {
+            sb.append("\nThe following constraints were derived by static projection analysis of this call step. ")
+                    .append("Treat them as hard requirements when choosing the field values and the arguments:\n");
+            for (String constraint : projectedConstraints) {
+                sb.append("- ").append(constraint).append('\n');
+            }
         }
 
         String prompt = sb.toString();

@@ -24,4 +24,21 @@ public class JSONFuzzStepResult {
 
     @JSONField(name = "invokeResultMap")
     private Map<String, String> invokeResultMap;
+
+    // ---- 约束投影埋点（SPEC 3.3）。projection-mode=off 时全部为 null，报告与基线一致 ----
+
+    @JSONField(name = "projectionKind")
+    private String projectionKind;
+
+    @JSONField(name = "projectionBreakpoint")
+    private Boolean projectionBreakpoint;
+
+    @JSONField(name = "projectionFuzzSkipped")
+    private Boolean projectionFuzzSkipped;
+
+    @JSONField(name = "projectionUpgraded")
+    private Boolean projectionUpgraded;
+
+    @JSONField(name = "projectionLlmCalls")
+    private Integer projectionLlmCalls;
 }

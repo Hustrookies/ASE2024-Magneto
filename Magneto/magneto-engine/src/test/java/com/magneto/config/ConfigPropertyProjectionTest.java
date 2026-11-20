@@ -27,6 +27,15 @@ public class ConfigPropertyProjectionTest {
         assertTrue(new ConfigProperty().getProjectionSkipLlmForPassthrough());
     }
 
+    /**
+     * 预算分级默认必须关闭：S5 的 off/full 对照只能有「跳过与约束注入」一个变量，
+     * 否则成功率差异无法归因到投影本身。
+     */
+    @Test
+    public void fuzzBudgetGradingIsOffByDefault() {
+        assertFalse(new ConfigProperty().getProjectionGradeFuzzBudget());
+    }
+
     @Test
     public void onlyFullModeAffectsFuzzing() {
         assertFalse(ProjectionMode.OFF.affectsFuzzing());

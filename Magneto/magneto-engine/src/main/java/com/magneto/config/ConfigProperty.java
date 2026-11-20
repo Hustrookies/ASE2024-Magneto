@@ -40,6 +40,21 @@ public class ConfigProperty {
     /** SPEC 3.3：R1 透传步骤是否完全免 LLM；false 则仍走一次性 LLM 合成。 */
     private Boolean projectionSkipLlmForPassthrough = true;
 
+    /**
+     * SPEC 3.3 任务 5：按复杂度给断点步骤分级 fuzz 预算。默认关闭——
+     * S5 的 off/full 对照必须只在「跳过与约束注入」一个变量上有差异，
+     * 预算分级会引入第二个变量，让成功率差异无法归因。留给阶段 B 做消融。
+     */
+    private Boolean projectionGradeFuzzBudget = false;
+
+    public Boolean getProjectionGradeFuzzBudget() {
+        return projectionGradeFuzzBudget;
+    }
+
+    public void setProjectionGradeFuzzBudget(Boolean projectionGradeFuzzBudget) {
+        this.projectionGradeFuzzBudget = projectionGradeFuzzBudget;
+    }
+
     public ProjectionMode getProjectionMode() {
         return projectionMode;
     }

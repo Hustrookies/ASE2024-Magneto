@@ -4,7 +4,9 @@ import cn.hutool.core.lang.Pair;
 import cn.hutool.core.util.ReUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.magneto.config.ConfigProperty;
+import com.magneto.config.GlobalConfiguration;
 import com.magneto.config.ProjectContext;
+import com.magneto.config.ProjectionMode;
 import com.magneto.fuzz.Evaluator;
 import com.magneto.fuzz.FuzzAnalysis;
 import com.magneto.fuzz.FuzzClassLoader;
@@ -21,6 +23,13 @@ import com.magneto.gpt.PromptGenerator;
 import com.magneto.instrument.state.StateNode;
 import com.magneto.staticanalysis.MethodCall;
 import com.magneto.staticanalysis.MethodCallChain;
+import com.magneto.staticanalysis.projection.ChainProjection;
+import com.magneto.staticanalysis.projection.DirectValueMapper;
+import com.magneto.staticanalysis.projection.FuzzBudget;
+import com.magneto.staticanalysis.projection.ProjectionKind;
+import com.magneto.staticanalysis.projection.ProjectionStepLog;
+import com.magneto.staticanalysis.projection.StepProjection;
+import com.magneto.staticanalysis.projection.StepRecord;
 import com.magneto.staticanalysis.dataflow.ControlFlowVariableAnalysis;
 import com.magneto.staticanalysis.dataflow.MethodParameterAnalysis;
 import com.magneto.staticanalysis.dataflow.MethodParameterMappingAnalysis;
@@ -107,6 +116,16 @@ public class StepFuzzRunner extends FuzzRunner {
             long fuzzChainStartTime = System.currentTimeMillis();
             StringBuilder abstractMethodPrompt = new StringBuilder();
 
+            // ---- 约束投影（SPEC 3.3）。off/classify 模式下 chainProjection 为 null，
+            //      stepLog 关闭，下面的分支全部短路，行为与基线逐行一致 ----
+            ProjectionMode projectionMode = CONFIG_PROPERTY.getProjectionMode();
+            boolean projectionActive = projectionMode.affectsFuzzing() && context.getChainProjectionService() != null;
+            ChainProjection chainProjection = projectionActive ? context.getChainProjectionService().analyze(chain) : null;
+            List<StepProjection> projections = chainProjection == null ? null : chainProjection.getSteps();
+            ProjectionStepLog stepLog = new ProjectionStepLog(GlobalConfiguration.OUTPUT_DIR, projectionActive);
+            boolean gradeBudget = projectionActive && Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionGradeFuzzBudget());
+            int budgetThreshold = gradeBudget ? FuzzBudget.medianComplexity(projections) : 0;
+
             for (int i = 1; i < methodCallChain.size(); i++) {
                 try {
                     MethodCall targetMethodCall = methodCallChain.get(i);
@@ -133,14 +152,74 @@ public class StepFuzzRunner extends FuzzRunner {
                     }
 
                     // One context propagation fuzzing
-                    int tryCount = 0;
+                    StepProjection projection = (projections != null && i - 1 < projections.size())
+                            ? projections.get(i - 1) : null;
+                    long stepStartTime = System.currentTimeMillis();
+                    int llmCallsBefore = solver.getAskCount();
+
+                    boolean fuzzSkipped = false;
+                    boolean upgraded = false;
+                    boolean trialResult = false;
                     Pair<FuzzResult, Context> stepFuzzResult = null;
-                    while (tryCount < CONFIG_PROPERTY.getMaxRetryCount() && stepFuzzResult == null) {
-                        log.info("[ context propagation fuzzing start... ]");
-                        stepFuzzResult = this.fuzzing(fuzzAnalysis, solver, fuzzContext,
+
+                    // 非断点步骤：直接合成 + 单次试运行，成功即跳过定向 fuzz（SPEC 3.3）
+                    if (projection != null && !projection.isBreakpoint()) {
+                        stepFuzzResult = this.trySingleShotSynthesis(projection, fuzzAnalysis, solver, fuzzContext,
                                 targetMethodCall, triggeredMethodCall, abstractMethodPrompt);
-                        tryCount++;
-                        log.info("[ context propagation fuzzing end, result: {}]", (stepFuzzResult != null ? "success... " : "fail... "));
+                        trialResult = stepFuzzResult != null;
+                        if (trialResult) {
+                            fuzzSkipped = true;
+                            log.info("[projection] step {} skipped directed fuzzing, kind={}", i, projection.getKind());
+                        } else {
+                            // 试运行失败：升级为断点，落入下面的完整流程。正确性由这条兜底保证
+                            projection.promoteToBreakpoint();
+                            upgraded = true;
+                            log.info("[projection] step {} single-shot synthesis failed, promoted to breakpoint", i);
+                        }
+                    }
+
+                    if (stepFuzzResult == null) {
+                        List<String> constraints = projection == null ? null : projection.getProjectedConstraints();
+                        long budget = (gradeBudget && projection != null)
+                                ? FuzzBudget.grade(CONFIG_PROPERTY.getMaxFuzzTime(), projection.getComplexityScore(), budgetThreshold)
+                                : CONFIG_PROPERTY.getMaxFuzzTime();
+
+                        int tryCount = 0;
+                        while (tryCount < CONFIG_PROPERTY.getMaxRetryCount() && stepFuzzResult == null) {
+                            log.info("[ context propagation fuzzing start... ]");
+                            stepFuzzResult = this.fuzzing(fuzzAnalysis, solver, fuzzContext,
+                                    targetMethodCall, triggeredMethodCall, abstractMethodPrompt, constraints, budget);
+                            tryCount++;
+                            log.info("[ context propagation fuzzing end, result: {}]", (stepFuzzResult != null ? "success... " : "fail... "));
+                        }
+                    }
+
+                    if (projectionActive) {
+                        StepRecord record = new StepRecord();
+                        record.setChainId(chainProjection.getChainId());
+                        record.setVulName(vulName);
+                        record.setStep(i);
+                        record.setKind(projection == null ? null : projection.getKind());
+                        record.setBreakpoint(projection != null && projection.isBreakpoint());
+                        record.setFuzzSkipped(fuzzSkipped);
+                        record.setTrialResult(trialResult);
+                        record.setUpgraded(upgraded);
+                        record.setStepTimeMs(System.currentTimeMillis() - stepStartTime);
+                        record.setLlmCalls(solver.getAskCount() - llmCallsBefore);
+                        record.setComplexity(projection == null ? null : projection.getComplexityScore());
+                        record.setBranch(projection == null ? null : projection.getBranchScore());
+                        stepLog.append(record);
+                        log.info("[projection-step] {}", record.toJsonLine());
+
+                        // 同步写进 FuzzResult，使 report.json 的每一步也带上投影信息
+                        if (stepFuzzResult != null) {
+                            FuzzResult stepResult = stepFuzzResult.getKey();
+                            stepResult.setProjectionKind(record.getKind() == null ? null : record.getKind().name());
+                            stepResult.setProjectionBreakpoint(record.isBreakpoint());
+                            stepResult.setProjectionFuzzSkipped(record.isFuzzSkipped());
+                            stepResult.setProjectionUpgraded(record.isUpgraded());
+                            stepResult.setProjectionLlmCalls(record.getLlmCalls());
+                        }
                     }
 
                     // clean the abstractMethodPrompt
@@ -180,11 +259,106 @@ public class StepFuzzRunner extends FuzzRunner {
         return generator.generate(false);
     }
 
+    private static final String DIRECT_SYNTHESIS_QUERY = "[projection] direct value synthesis, no LLM query";
+
+    private static final String DIRECT_SYNTHESIS_ANSWER = "[projection] values mapped from the previous step's context";
+
+    /**
+     * 非断点步骤的单次合成（SPEC 3.3）：不进重试循环、不进变异循环，只做一次调用 + 校验。
+     *
+     * <ul>
+     *   <li>R1 PASSTHROUGH（且 projection-skip-llm-for-passthrough=true）：完全免 LLM，
+     *       由 DirectValueMapper 把上一步 Context 里 callee 的实参值直接映射进 caller 形参；</li>
+     *   <li>R2 SIMPLE_DERIVATION：走一次 LLM，并把投影约束注入 prompt。</li>
+     * </ul>
+     *
+     * 任何一步不成立都返回 null，由调用方升级为断点走完整定向 fuzz——这是不漏验证的兜底。
+     */
+    protected Pair<FuzzResult, Context> trySingleShotSynthesis(StepProjection projection, FuzzAnalysis fuzzAnalysis,
+                                                              GPTSolver solver, FuzzContext fuzzContext,
+                                                              MethodCall targetMethodCall, MethodCall triggeredMethodCall,
+                                                              StringBuilder abstractMethodPrompt) throws Exception {
+        boolean skipLlm = projection.getKind() == ProjectionKind.PASSTHROUGH
+                && Boolean.TRUE.equals(CONFIG_PROPERTY.getProjectionSkipLlmForPassthrough());
+
+        if (skipLlm && !DirectValueMapper.hasAnyDirectMapping(projection)) {
+            log.info("[projection] step has no directly mappable argument, fall back to directed fuzzing");
+            return null;
+        }
+
+        Context latestContext = fuzzContext.getLatestContext();
+        FuzzObjectMapper fuzzObjectMapper = new FuzzObjectMapper(instrumentedFuzzLoader);
+        FuzzParser fuzzParser = new FuzzParser(instrumentedFuzzLoader, fuzzObjectMapper);
+
+        Seed seed;
+        String query;
+        String answer;
+
+        if (skipLlm) {
+            seed = fuzzParser.parseSeed(null, latestContext, targetMethodCall);
+            if (seed == null) {
+                log.info("[projection] null seed from context, fall back to directed fuzzing");
+                return null;
+            }
+            if (!DirectValueMapper.apply(seed.getParamValues(), targetMethodCall.getParameterTypes(),
+                    latestContext.getParamsValue(), projection)) {
+                log.info("[projection] direct value mapping rejected the projected values, fall back to directed fuzzing");
+                return null;
+            }
+            query = DIRECT_SYNTHESIS_QUERY;
+            answer = DIRECT_SYNTHESIS_ANSWER;
+        } else {
+            Pair<String, String> gptAnswer = solver.getGPTAnswer(targetMethodCall, triggeredMethodCall,
+                    abstractMethodPrompt, projection.getProjectedConstraints());
+            seed = fuzzParser.parseSeed(gptAnswer.getValue(), latestContext, targetMethodCall);
+            if (seed == null) {
+                return null;
+            }
+            query = gptAnswer.getKey();
+            answer = gptAnswer.getValue();
+        }
+
+        fixAndConnectContext(seed, latestContext, fuzzAnalysis, fuzzObjectMapper, targetMethodCall, triggeredMethodCall);
+
+        long beginTime = System.currentTimeMillis();
+        InvokeMethodResult invokeMethodResult = this.invokeMethod(seed, targetMethodCall);
+        if (invokeMethodResult == null) {
+            return null;
+        }
+
+        ValidateResult validateResult = validateInvokeResult(fuzzContext, invokeMethodResult);
+        if (!validateResult.isSuccess()) {
+            return null;
+        }
+
+        log.info("*** [projection] single-shot synthesis triggered the vulnerability: {} ===> {} ] ***",
+                targetMethodCall.getMethodSubSignature(), triggeredMethodCall.getMethodSubSignature());
+
+        if (!skipLlm) {
+            solver.updateGPTServerStatus(query, answer);
+            solver.addGPTAnswerCache(new Pair<>(query, answer));
+        }
+
+        return processTriggerSeed(beginTime, targetMethodCall, seed, query, answer, validateResult, invokeMethodResult);
+    }
+
     protected Pair<FuzzResult, Context> fuzzing(FuzzAnalysis fuzzAnalysis, GPTSolver solver, FuzzContext fuzzContext,
                                                 MethodCall targetMethodCall, MethodCall triggeredMethodCall, StringBuilder abstractMethodPrompt)
             throws Exception {
+        return fuzzing(fuzzAnalysis, solver, fuzzContext, targetMethodCall, triggeredMethodCall, abstractMethodPrompt,
+                null, CONFIG_PROPERTY.getMaxFuzzTime());
+    }
+
+    /**
+     * @param projectedConstraints 投影约束，注入 prompt；null 表示不注入（与基线一致）
+     * @param fuzzTimeBudget       本步变异循环的时间预算，默认 maxFuzzTime
+     */
+    protected Pair<FuzzResult, Context> fuzzing(FuzzAnalysis fuzzAnalysis, GPTSolver solver, FuzzContext fuzzContext,
+                                                MethodCall targetMethodCall, MethodCall triggeredMethodCall, StringBuilder abstractMethodPrompt,
+                                                List<String> projectedConstraints, long fuzzTimeBudget)
+            throws Exception {
         // ask GPT to understand code
-        Pair<String, String> gptAnswer = solver.getGPTAnswer(targetMethodCall, triggeredMethodCall, abstractMethodPrompt); // (query content, GPT answer)
+        Pair<String, String> gptAnswer = solver.getGPTAnswer(targetMethodCall, triggeredMethodCall, abstractMethodPrompt, projectedConstraints); // (query content, GPT answer)
         String value = gptAnswer.getValue();
         log.warn("the gpt answer: {}", value);
 
@@ -205,7 +379,7 @@ public class StepFuzzRunner extends FuzzRunner {
 
             // begin fuzzing
             long beginTime = System.currentTimeMillis();
-            long maxFuzzTime = SpringUtil.getBean(ConfigProperty.class).getMaxFuzzTime();
+            long maxFuzzTime = fuzzTimeBudget;
 
             while (System.currentTimeMillis() - beginTime <= maxFuzzTime) {
                 // fuzz loop

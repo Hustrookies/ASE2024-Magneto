@@ -1,0 +1,4 @@
+{"chain_id":"chain-0","vul_name":"CVE-2019-10086","step":1,"kind":"PASSTHROUGH","breakpoint":false,"fuzz_skipped":true,"trial_result":true,"upgraded":false,"step_time_ms":19,"llm_calls":0,"complexity":34,"branch":1}
+{"chain_id":"chain-1","vul_name":"CVE-2019-10086","step":1,"kind":"SIMPLE_DERIVATION","breakpoint":false,"fuzz_skipped":true,"trial_result":true,"upgraded":false,"step_time_ms":1329,"llm_calls":1,"complexity":37,"branch":1}
+{"chain_id":"chain-1","vul_name":"CVE-2019-10086","step":2,"kind":"UNKNOWN","breakpoint":true,"fuzz_skipped":false,"trial_result":false,"upgraded":false,"step_time_ms":1211,"llm_calls":1,"complexity":36,"branch":1}
+{"chain_id":"chain-1","vul_name":"CVE-2019-10086","step":3,"kind":"CONDITIONAL_SELECT","breakpoint":true,"fuzz_skipped":false,"trial_result":false,"upgraded":false,"step_time_ms":21660,"llm_calls":1,"complexity":46,"branch":1}

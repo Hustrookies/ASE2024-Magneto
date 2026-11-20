@@ -4,7 +4,9 @@
 >
 > 工程：`ASE2024-Magneto/Magneto`（Java 8 + Soot + Spring Boot，基线 commit `8f024c0d`）
 >
-> 状态：**待确认**（确认后按阶段门禁顺序执行，任何阶段未验收不得进入下一阶段）
+> 状态：**执行中**（S0—S4 已验收，S5 待做）。按阶段门禁顺序推进，任何阶段未验收不得进入下一阶段。
+> 验收证据：[docs/baseline-snapshot/](docs/baseline-snapshot/)（S0）、[docs/projection-annotation.md](docs/projection-annotation.md)（S2）、
+> [docs/projection-schema.md](docs/projection-schema.md)（S3）、[docs/s4-evidence/](docs/s4-evidence/)（S4）
 
 ---
 
@@ -190,10 +192,10 @@ for 每个步骤 i（现有循环 L110）:
 5. 复杂度分数分级 fuzz 预算（低分断点 `maxFuzzTime/2`）。
 
 **验收标准：**
-- [ ] `classify` 模式：fuzz 行为与 `off` 完全一致（日志 diff），仅多 projection.json；
-- [ ] `full` 模式：≥1 条链端到端完成，日志可见 `fuzz_skipped=true` 的步骤且该步未进入变异循环；
-- [ ] 构造一个必然试运行失败的场景（fixture），验证 `upgraded=true` 后走完整 fuzz 流程；
-- [ ] `off` 模式回归：S0 基线快照复跑一致。
+- [x] `classify` 模式：fuzz 行为与 `off` 完全一致（日志 diff），仅多 projection.json；*比日志 diff 更硬的证据：两次运行发给 LLM 的 4 个 prompt **逐字节相同**（gpt-cache.json 的 prompt 集合相等）；结构性 fuzz 日志逐行一致，classify 仅多 9 行静态阶段投影日志；report.json 的 successStep / 字段集完全一致*
+- [x] `full` 模式：≥1 条链端到端完成，日志可见 `fuzz_skipped=true` 的步骤且该步未进入变异循环；*chain-0 端到端完成：`fuzz_skipped=true, llm_calls=0, step_time_ms=19`，`[ context propagation fuzzing start... ]` 出现 **0 次**；对照 off 模式同链 2065ms，**约 90× 提速且零 LLM 调用**，successStep 相同*
+- [x] 构造一个必然试运行失败的场景（fixture），验证 `upgraded=true` 后走完整 fuzz 流程；*用故障注入（临时令 `trySingleShotSynthesis` 恒返回 null，验证后已还原并复跑确认）：埋点输出 `kind=PASSTHROUGH, breakpoint=true, upgraded=true, fuzz_skipped=false, llm_calls=1`，变异循环启动 1 次——即静态判定被保留、断点被抬升、完整流程确实接管*
+- [x] `off` 模式回归：S0 基线快照复跑一致。*`compare.py` exit=0 四项全 PASS；且 off 模式不产生 projection.json / projection-steps.jsonl，report.json 步骤字段集与改动前完全一致（无新增 null 字段）*
 
 ### S5 冒烟回归与实验就绪（11/19，~0.5 天）
 

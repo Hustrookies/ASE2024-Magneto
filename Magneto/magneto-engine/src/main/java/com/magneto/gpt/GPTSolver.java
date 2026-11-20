@@ -27,6 +27,8 @@ public class GPTSolver {
 
     private final GPTServer gptServer;
 
+    private int askCount = 0;
+
     private static final Map<String, Pair<String, String>> QUERY_RECORD_MAP = new HashMap<>(); // prompt string ---> (prompt, answer)
 
     public GPTSolver() {
@@ -36,7 +38,16 @@ public class GPTSolver {
 
     // <prompt string, gpt answer string>
     public Pair<String, String> getGPTAnswer(MethodCall targetMethodCall, MethodCall triggeredMethodCall, StringBuilder abstractMethodPrompt) throws IOException {
-        PromptGenerator generator = new PromptGenerator(targetMethodCall, triggeredMethodCall);
+        return getGPTAnswer(targetMethodCall, triggeredMethodCall, abstractMethodPrompt, null);
+    }
+
+    /**
+     * @param projectedConstraints 断点步骤的投影约束，注入 prompt；null 表示不注入（基线行为）
+     */
+    public Pair<String, String> getGPTAnswer(MethodCall targetMethodCall, MethodCall triggeredMethodCall,
+                                             StringBuilder abstractMethodPrompt, List<String> projectedConstraints) throws IOException {
+        PromptGenerator generator = new PromptGenerator(targetMethodCall, triggeredMethodCall)
+                .withProjectedConstraints(projectedConstraints);
         String prompt = generator.generate(abstractMethodPrompt);
 
         // firstly get GPT answer from cache
@@ -47,6 +58,7 @@ public class GPTSolver {
 
         String answer = null;
         if (CONFIG_PROPERTY.getEnableGpt()) {
+            askCount++;
             answer = gptServer.askGPT(prompt);
         }
 
@@ -56,6 +68,11 @@ public class GPTSolver {
             answer = null;
         }
         return new Pair<>(prompt, answer);
+    }
+
+    /** 本实例真实发出的 LLM 请求次数（缓存命中不计），用于步骤级埋点的 llm_calls。 */
+    public int getAskCount() {
+        return askCount;
     }
 
     public void addGPTAnswerCache(Pair<String, String> gptAnswer) {

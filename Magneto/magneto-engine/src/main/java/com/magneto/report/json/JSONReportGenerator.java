@@ -122,6 +122,13 @@ public class JSONReportGenerator extends ReportGenerator {
                     Map<String, String> invokeResultMap = getInvokeResultMap(fuzzResult);
                     jsonFuzzStepResult.setInvokeResultMap(invokeResultMap);
 
+                    // 约束投影埋点（SPEC 3.3）；off 模式下这些字段全为 null
+                    jsonFuzzStepResult.setProjectionKind(fuzzResult.getProjectionKind());
+                    jsonFuzzStepResult.setProjectionBreakpoint(fuzzResult.getProjectionBreakpoint());
+                    jsonFuzzStepResult.setProjectionFuzzSkipped(fuzzResult.getProjectionFuzzSkipped());
+                    jsonFuzzStepResult.setProjectionUpgraded(fuzzResult.getProjectionUpgraded());
+                    jsonFuzzStepResult.setProjectionLlmCalls(fuzzResult.getProjectionLlmCalls());
+
                     jsonFuzzStepResultList.add(jsonFuzzStepResult);
                 }
 

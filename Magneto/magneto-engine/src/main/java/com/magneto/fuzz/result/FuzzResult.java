@@ -76,4 +76,56 @@ public class FuzzResult {
     public void setSeed(Seed seed) {
         this.seed = seed;
     }
+
+    // ---- 约束投影埋点（SPEC 3.3 报告扩展）。projection-mode=off 时全部为 null ----
+
+    private String projectionKind;
+
+    private Boolean projectionBreakpoint;
+
+    private Boolean projectionFuzzSkipped;
+
+    private Boolean projectionUpgraded;
+
+    private Integer projectionLlmCalls;
+
+    public String getProjectionKind() {
+        return projectionKind;
+    }
+
+    public void setProjectionKind(String projectionKind) {
+        this.projectionKind = projectionKind;
+    }
+
+    public Boolean getProjectionBreakpoint() {
+        return projectionBreakpoint;
+    }
+
+    public void setProjectionBreakpoint(Boolean projectionBreakpoint) {
+        this.projectionBreakpoint = projectionBreakpoint;
+    }
+
+    public Boolean getProjectionFuzzSkipped() {
+        return projectionFuzzSkipped;
+    }
+
+    public void setProjectionFuzzSkipped(Boolean projectionFuzzSkipped) {
+        this.projectionFuzzSkipped = projectionFuzzSkipped;
+    }
+
+    public Boolean getProjectionUpgraded() {
+        return projectionUpgraded;
+    }
+
+    public void setProjectionUpgraded(Boolean projectionUpgraded) {
+        this.projectionUpgraded = projectionUpgraded;
+    }
+
+    public Integer getProjectionLlmCalls() {
+        return projectionLlmCalls;
+    }
+
+    public void setProjectionLlmCalls(Integer projectionLlmCalls) {
+        this.projectionLlmCalls = projectionLlmCalls;
+    }
 }
