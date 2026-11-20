@@ -103,3 +103,6 @@ runs/
 # ...but the S0 baseline snapshot output IS tracked
 !docs/baseline-snapshot/output/
 !docs/baseline-snapshot/output/**
+
+# 图形源文件需要跟踪（根 .gitignore 的 *.svg 会连论文插图源文件一起排除）
+!docs/figures/*.svg

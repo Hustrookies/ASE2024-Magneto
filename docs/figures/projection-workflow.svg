@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1560" viewBox="0 0 1500 1560"
+     font-family="'Noto Sans CJK SC','Source Han Sans SC','Microsoft YaHei','PingFang SC',sans-serif">
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+    <marker id="arwR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/>
+    </marker>
+    <marker id="arwG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e7a46"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title  { font-size:25px; font-weight:700; fill:#111; }
+    .sub    { font-size:14px; fill:#555; }
+    .plabel { font-size:16px; font-weight:700; fill:#1a3d5c; }
+    .bt     { font-size:14.5px; fill:#111; }
+    .bs     { font-size:12.5px; fill:#444; }
+    .bm     { font-size:12.5px; fill:#333; font-family:'DejaVu Sans Mono',Consolas,monospace; }
+    .nt     { font-size:12px; fill:#333; }
+    .nh     { font-size:13px; font-weight:700; fill:#1a3d5c; }
+    .elbl   { font-size:12.5px; fill:#333; }
+    .phaseA { fill:#f4f8fc; stroke:#9db8d2; stroke-dasharray:6 4; }
+    .phaseB { fill:#f6fbf5; stroke:#a3c9a0; stroke-dasharray:6 4; }
+    .phaseC { fill:#fdf8f2; stroke:#d9b98a; stroke-dasharray:6 4; }
+    .phaseD { fill:#f7f5fb; stroke:#b3a6cf; stroke-dasharray:6 4; }
+    .new    { fill:#e6f0fb; stroke:#2a6fb0; stroke-width:1.6; }
+    .reuse  { fill:#f0f0f0; stroke:#8a8a8a; stroke-width:1.4; }
+    .out    { fill:#ffffff; stroke:#6b5b95; stroke-width:1.5; }
+    .dec    { fill:#fff6dd; stroke:#c08a00; stroke-width:1.6; }
+    .fail   { fill:#fdecea; stroke:#c0392b; stroke-width:1.6; }
+    .side   { fill:#ffffff; stroke:#c8c8c8; stroke-width:1.2; }
+    .flow   { stroke:#333; stroke-width:1.7; fill:none; }
+    .flowG  { stroke:#1e7a46; stroke-width:1.7; fill:none; }
+    .flowR  { stroke:#c0392b; stroke-width:1.8; fill:none; stroke-dasharray:7 4; }
+  </style>
+
+  <!-- ===================== 标题 ===================== -->
+  <text x="750" y="38" text-anchor="middle" class="title">约束投影驱动的关键节点识别与分步可利用性验证流程</text>
+  <text x="750" y="60" text-anchor="middle" class="sub">蓝色 = 本文新增　·　灰色 = 复用 Magneto 既有组件　·　红色虚线 = 试运行失败后的升级回退</text>
+
+  <!-- ===================== 阶段 A ===================== -->
+  <rect x="30" y="80" width="1120" height="470" rx="10" class="phaseA"/>
+  <text x="50" y="106" class="plabel">阶段 A ｜ 静态投影分析　（每条链执行一次，结果按链缓存）</text>
+
+  <rect x="110" y="122" width="690" height="58" rx="6" class="reuse"/>
+  <text x="455" y="146" text-anchor="middle" class="bt">输入：可达调用链　F&#8345; → … → F&#8321; → F&#8320;　（F&#8320; 为上游漏洞函数）</text>
+  <text x="455" y="167" text-anchor="middle" class="bs">以及该 CVE 的 PoC / groundtruth 测试用例（提供 F&#8320; 的触发实参值）</text>
+
+  <line x1="455" y1="180" x2="455" y2="204" class="flow" marker-end="url(#arw)"/>
+
+  <rect x="110" y="204" width="690" height="46" rx="6" class="reuse"/>
+  <text x="455" y="226" text-anchor="middle" class="bt">① 定位 callee 调用点　<tspan class="bm">TaintFlowAnalysis.findTriggeredMethodUnit</tspan></text>
+  <text x="455" y="243" text-anchor="middle" class="bs">同一 caller 内可能有多个调用点 —— 分类结果取其中最劣者</text>
+
+  <line x1="455" y1="250" x2="455" y2="274" class="flow" marker-end="url(#arw)"/>
+
+  <rect x="110" y="274" width="690" height="86" rx="6" class="new"/>
+  <text x="455" y="298" text-anchor="middle" class="bt">② 自调用点沿 def 链后向溯源（BFS，深度 ≤ maxInterAnalysisScope）</text>
+  <text x="455" y="320" text-anchor="middle" class="bs">(a) 每个 callee 实参的来源与派生算子链　　(b) 实例调用的接收者 base</text>
+  <text x="455" y="340" text-anchor="middle" class="bs">(c) 能到达该调用点的条件分支（守卫）与实参的多定义点</text>
+
+  <line x1="455" y1="360" x2="455" y2="384" class="flow" marker-end="url(#arw)"/>
+
+  <rect x="110" y="384" width="690" height="72" rx="6" class="new"/>
+  <text x="455" y="408" text-anchor="middle" class="bt">③ 四分类判定　R1–R5　→　<tspan class="bm">ProjectionKind</tspan></text>
+  <text x="455" y="430" text-anchor="middle" class="bs">透传 PASSTHROUGH ｜ 简单派生 SIMPLE_DERIVATION ｜ 复杂构造 COMPLEX_CONSTRUCTION</text>
+  <text x="455" y="448" text-anchor="middle" class="bs">条件选择 CONDITIONAL_SELECT ｜ 未知 UNKNOWN（保守兜底）</text>
+
+  <line x1="455" y1="456" x2="455" y2="470" class="flow" marker-end="url(#arw)"/>
+
+  <polygon points="455,470 615,505 455,540 295,505" class="dec"/>
+  <text x="455" y="511" text-anchor="middle" class="bt">④ 是否为投影断点？</text>
+  <text x="628" y="509" class="bs">断点：复杂构造 / 条件选择 / 未知</text>
+
+  <!-- 阶段 A 右侧标注 -->
+  <rect x="830" y="122" width="300" height="180" rx="6" class="side"/>
+  <text x="846" y="146" class="nh">复用的既有组件</text>
+  <text x="846" y="170" class="nt">· MethodParameterMappingAnalysis</text>
+  <text x="858" y="187" class="nt">→ taintObjectMap（实参↔形参映射）</text>
+  <text x="846" y="208" class="nt">· ControlFlowVariableAnalysis</text>
+  <text x="846" y="229" class="nt">· ComplexityAnalyzer / BranchAnalyzer</text>
+  <text x="858" y="246" class="nt">→ complexityScore / branchScore</text>
+  <text x="846" y="272" class="nt">· TaintFlowAnalysis 的调用点定位</text>
+  <text x="858" y="289" class="nt">（提升为 public static 以供复用）</text>
+
+  <rect x="830" y="318" width="300" height="212" rx="6" class="side"/>
+  <text x="846" y="342" class="nh">保守性红线</text>
+  <text x="846" y="366" class="nt">宁可多验证，不可漏验证：</text>
+  <text x="846" y="387" class="nt">任何无法确证可跳过的情形</text>
+  <text x="846" y="408" class="nt">一律判为断点。</text>
+  <text x="846" y="436" class="nt">该规则只增加断点、不减少，</text>
+  <text x="846" y="457" class="nt">故结构上不可能把断点误判</text>
+  <text x="846" y="478" class="nt">为非断点。</text>
+  <text x="846" y="506" class="nt">接收者规则同理：仅静态调用、</text>
+  <text x="846" y="524" class="nt">this、this 的直接字段读放行。</text>
+
+  <!-- ===================== 阶段 B ===================== -->
+  <line x1="455" y1="540" x2="455" y2="576" class="flow" marker-end="url(#arw)"/>
+  <rect x="30" y="580" width="1120" height="176" rx="10" class="phaseB"/>
+  <text x="50" y="606" class="plabel">阶段 B ｜ 约束沿链反向传播　（值级投影，非符号求解）</text>
+
+  <rect x="110" y="622" width="690" height="50" rx="6" class="reuse"/>
+  <text x="455" y="644" text-anchor="middle" class="bt">执行 PoC 测试用例，插桩捕获 F&#8320; 各实参的运行时值　→　要求集 R&#8320;</text>
+  <text x="455" y="662" text-anchor="middle" class="bs"><tspan class="bm">FuzzContext</tspan> / <tspan class="bm">Context.getParamsValue()</tspan>（Magneto 既有机制）</text>
+
+  <line x1="455" y1="672" x2="455" y2="694" class="flow" marker-end="url(#arw)"/>
+
+  <rect x="110" y="694" width="690" height="50" rx="6" class="new"/>
+  <text x="455" y="716" text-anchor="middle" class="bt">逐步骤外推：R&#7522; = O&#7522;&#8315;¹( R&#7522;&#8331;&#8321; )　→　每步生成 projectedConstraints</text>
+  <text x="455" y="734" text-anchor="middle" class="bs">遇断点即中止传播（无法静态求逆，不伪造映射）；CAST 视为值级恒等，拼接/包装转写为约束</text>
+
+  <rect x="830" y="622" width="300" height="122" rx="6" class="side"/>
+  <text x="846" y="646" class="nh">投影方向</text>
+  <text x="846" y="670" class="nt">PoC 钉住 F&#8320; 的实参值，</text>
+  <text x="846" y="691" class="nt">由内向外逐层反推每个</text>
+  <text x="846" y="712" class="nt">F&#7522; 的形参/字段应满足</text>
+  <text x="846" y="733" class="nt">什么，直至链的入口。</text>
+
+  <!-- ===================== 阶段 C ===================== -->
+  <line x1="455" y1="744" x2="455" y2="782" class="flow" marker-end="url(#arw)"/>
+  <rect x="30" y="786" width="1120" height="556" rx="10" class="phaseC"/>
+  <text x="50" y="812" class="plabel">阶段 C ｜ 运行时分步分派　（config.projection-mode = full）</text>
+
+  <!-- 分派判定 -->
+  <polygon points="335,828 495,872 335,916 175,872" class="dec"/>
+  <text x="335" y="868" text-anchor="middle" class="bt">步骤 i 是断点？</text>
+  <text x="335" y="887" text-anchor="middle" class="bs">读 StepProjection.breakpoint</text>
+
+  <!-- 左：非断点 -->
+  <line x1="335" y1="916" x2="335" y2="948" class="flowG" marker-end="url(#arwG)"/>
+  <text x="348" y="938" class="elbl" fill="#1e7a46">否（可跳过）</text>
+
+  <rect x="110" y="948" width="450" height="76" rx="6" class="new"/>
+  <text x="335" y="972" text-anchor="middle" class="bt">单次种子合成（不进重试循环）</text>
+  <text x="335" y="993" text-anchor="middle" class="bs">R1 透传 → 直接值映射，<tspan font-weight="700">零 LLM 调用</tspan></text>
+  <text x="335" y="1012" text-anchor="middle" class="bs">R2 简单派生 → 单次 LLM 调用（注入投影约束）</text>
+
+  <line x1="335" y1="1024" x2="335" y2="1052" class="flowG" marker-end="url(#arwG)"/>
+
+  <rect x="110" y="1052" width="450" height="46" rx="6" class="new"/>
+  <text x="335" y="1074" text-anchor="middle" class="bt">单次试运行　<tspan class="bm">invokeMethod + validateInvokeResult</tspan></text>
+  <text x="335" y="1091" text-anchor="middle" class="bs">不进入 SeedQueue 变异循环</text>
+
+  <line x1="335" y1="1098" x2="335" y2="1128" class="flowG" marker-end="url(#arwG)"/>
+  <polygon points="335,1128 470,1170 335,1212 200,1170" class="dec"/>
+  <text x="335" y="1166" text-anchor="middle" class="bt">试运行成功？</text>
+  <text x="335" y="1185" text-anchor="middle" class="bs">callee 被触发且输入校验通过</text>
+
+  <line x1="335" y1="1212" x2="335" y2="1244" class="flowG" marker-end="url(#arwG)"/>
+  <text x="348" y="1234" class="elbl" fill="#1e7a46">是</text>
+  <rect x="110" y="1244" width="450" height="52" rx="6" class="new"/>
+  <text x="335" y="1266" text-anchor="middle" class="bt">上下文传播 <tspan class="bm">addNewContext</tspan>；记 <tspan class="bm">fuzz_skipped=true</tspan></text>
+  <text x="335" y="1285" text-anchor="middle" class="bs">直接进入步骤 i+1 —— 本步完全跳过定向 fuzz</text>
+
+  <!-- 失败升级 -->
+  <line x1="470" y1="1170" x2="620" y2="1170" class="flowR" marker-end="url(#arwR)"/>
+  <text x="500" y="1160" class="elbl" fill="#c0392b">否</text>
+  <rect x="620" y="1144" width="290" height="52" rx="6" class="fail"/>
+  <text x="765" y="1166" text-anchor="middle" class="bt">升级为断点</text>
+  <text x="765" y="1185" text-anchor="middle" class="bm">promoteToBreakpoint(); upgraded=true</text>
+
+  <path d="M910,1170 L1140,1170 L1140,966 L1122,966" class="flowR" marker-end="url(#arwR)"/>
+  <text x="1025" y="1162" text-anchor="middle" class="elbl" fill="#c0392b">回落完整流程</text>
+
+  <!-- 右：断点 -->
+  <line x1="495" y1="872" x2="620" y2="872" class="flow" marker-end="url(#arw)"/>
+  <text x="512" y="862" class="elbl">是（关键节点）</text>
+
+  <rect x="620" y="900" width="500" height="132" rx="6" class="reuse"/>
+  <text x="870" y="924" text-anchor="middle" class="bt">完整定向 fuzz（Magneto 原有流程，不改动）</text>
+  <text x="870" y="946" text-anchor="middle" class="bs">LLM 生成初始种子 → <tspan class="bm">fixAndConnectContext</tspan> → SeedQueue 变异循环</text>
+  <text x="870" y="965" text-anchor="middle" class="bs">→ invoke → validate；失败按 maxRetryCount 重试</text>
+  <text x="870" y="990" text-anchor="middle" class="bs" font-weight="700">prompt 追加两段投影信息：</text>
+  <text x="870" y="1012" text-anchor="middle" class="bs" font-weight="700">构造目标 ＋ 可达性义务 REACHABILITY OBLIGATION</text>
+
+  <line x1="870" y1="1032" x2="870" y2="1244" class="flow" marker-end="url(#arw)"/>
+  <rect x="620" y="1244" width="500" height="52" rx="6" class="new"/>
+  <text x="870" y="1266" text-anchor="middle" class="bt">成功则上下文传播；失败则该链在此步终止</text>
+  <text x="870" y="1285" text-anchor="middle" class="bs">两条路径汇合后进入步骤 i+1</text>
+
+  <line x1="560" y1="1270" x2="620" y2="1270" class="flow" marker-end="url(#arw)"/>
+
+  <!-- 阶段 C 右侧标注 -->
+  <rect x="620" y="1046" width="290" height="80" rx="6" class="side"/>
+  <text x="636" y="1070" class="nh">正确性兜底</text>
+  <text x="636" y="1092" class="nt">分类误判最多损失一次试运行，</text>
+  <text x="636" y="1111" class="nt">随后必然回落到完整定向 fuzz。</text>
+
+  <!-- ===================== 阶段 D ===================== -->
+  <line x1="455" y1="1342" x2="455" y2="1372" class="flow" marker-end="url(#arw)"/>
+  <rect x="30" y="1376" width="1120" height="146" rx="10" class="phaseD"/>
+  <text x="50" y="1402" class="plabel">阶段 D ｜ 产物与埋点</text>
+
+  <rect x="70" y="1418" width="330" height="80" rx="6" class="out"/>
+  <text x="235" y="1442" text-anchor="middle" class="bt bm">projection.json</text>
+  <text x="235" y="1463" text-anchor="middle" class="bs">静态投影结果：分类、断点、</text>
+  <text x="235" y="1481" text-anchor="middle" class="bs">算子链、约束文本、evidence</text>
+
+  <rect x="425" y="1418" width="330" height="80" rx="6" class="out"/>
+  <text x="590" y="1442" text-anchor="middle" class="bt bm">projection-steps.jsonl</text>
+  <text x="590" y="1463" text-anchor="middle" class="bs">步骤级埋点：kind / breakpoint /</text>
+  <text x="590" y="1481" text-anchor="middle" class="bs">fuzz_skipped / upgraded / llm_calls / 耗时</text>
+
+  <rect x="780" y="1418" width="330" height="80" rx="6" class="out"/>
+  <text x="945" y="1442" text-anchor="middle" class="bt bm">report.json（扩展字段）</text>
+  <text x="945" y="1463" text-anchor="middle" class="bs">每个成功步附带投影信息；</text>
+  <text x="945" y="1481" text-anchor="middle" class="bs">off 模式下字段不出现，报告与基线一致</text>
+
+  <!-- ===================== 侧栏：三态开关 ===================== -->
+  <rect x="1180" y="80" width="290" height="470" rx="8" class="side"/>
+  <text x="1198" y="108" class="nh">三态配置开关</text>
+  <text x="1198" y="132" class="nt bm">config.projection-mode</text>
+  <rect x="1198" y="146" width="254" height="86" rx="5" fill="#f0f0f0" stroke="#8a8a8a"/>
+  <text x="1210" y="167" class="bt" font-weight="700">off</text>
+  <text x="1210" y="188" class="nt">基线行为。不做投影分析，</text>
+  <text x="1210" y="206" class="nt">不产生任何额外文件与日志，</text>
+  <text x="1210" y="224" class="nt">输出与改造前逐字节一致。</text>
+  <rect x="1198" y="242" width="254" height="86" rx="5" fill="#f0f0f0" stroke="#8a8a8a"/>
+  <text x="1210" y="263" class="bt" font-weight="700">classify</text>
+  <text x="1210" y="284" class="nt">只计算并输出 projection.json，</text>
+  <text x="1210" y="302" class="nt">fuzz 行为与 off 完全一致</text>
+  <text x="1210" y="320" class="nt">（发给 LLM 的 prompt 逐字节相同）。</text>
+  <rect x="1198" y="338" width="254" height="102" rx="5" fill="#e6f0fb" stroke="#2a6fb0"/>
+  <text x="1210" y="359" class="bt" font-weight="700">full</text>
+  <text x="1210" y="380" class="nt">跳过非断点步骤 ＋ 断点步骤</text>
+  <text x="1210" y="398" class="nt">注入约束 ＋ 试运行失败升级。</text>
+  <text x="1210" y="420" class="nt">阶段 C 仅在此模式生效。</text>
+  <text x="1198" y="470" class="nh">另两个消融开关</text>
+  <text x="1198" y="492" class="nt bm">projection-inject-constraints</text>
+  <text x="1198" y="510" class="nt">分离「跳过收益」与「注入影响」</text>
+  <text x="1198" y="532" class="nt bm">projection-grade-fuzz-budget</text>
+
+  <rect x="1180" y="580" width="290" height="176" rx="8" class="side"/>
+  <text x="1198" y="608" class="nh">为何是「值级」投影</text>
+  <text x="1198" y="632" class="nt">阶段 A 只做分类与溯源，不做</text>
+  <text x="1198" y="651" class="nt">符号求解；阶段 B 直接搬运 PoC</text>
+  <text x="1198" y="670" class="nt">执行得到的具体值。算子不可逆</text>
+  <text x="1198" y="689" class="nt">时（拼接、包装）不猜值，而是</text>
+  <text x="1198" y="708" class="nt">转写成自然语言约束交给 LLM，</text>
+  <text x="1198" y="727" class="nt">或标记为断点走完整定向 fuzz。</text>
+  <text x="1198" y="748" class="nt">符号级约束求解顺延至阶段 B。</text>
+
+  <rect x="1180" y="786" width="290" height="556" rx="8" class="side"/>
+  <text x="1198" y="814" class="nh">关键节点的两种含义</text>
+  <text x="1198" y="838" class="nt">本文的「关键节点」= 投影断点，</text>
+  <text x="1198" y="857" class="nt">即约束无法沿链继续外推的位置。</text>
+  <text x="1198" y="884" class="nt">三类成因：</text>
+  <text x="1198" y="906" class="nt">· 复杂构造 —— 值需在 caller 内</text>
+  <text x="1210" y="924" class="nt">新建并多次写入（R3）</text>
+  <text x="1198" y="946" class="nt">· 条件选择 —— 调用点受守卫支配</text>
+  <text x="1210" y="964" class="nt">或实参有多定义点（R4）</text>
+  <text x="1198" y="986" class="nt">· 未知 —— 接口分发不可解析、</text>
+  <text x="1210" y="1004" class="nt">任意方法返回值、深度超限（R5）</text>
+  <text x="1198" y="1032" class="nh">被忽略的接收者（S5 修正）</text>
+  <text x="1198" y="1056" class="nt">仅投影实参不足以保证可达：</text>
+  <text x="1198" y="1075" class="nt">QLExpress 中</text>
+  <text x="1198" y="1094" class="nt bm">list.get(0).getObjectInner(parent)</text>
+  <text x="1198" y="1113" class="nt">实参 parent 是纯透传，接收者却是</text>
+  <text x="1198" y="1132" class="nt">运行时派生对象。故接收者也须</text>
+  <text x="1198" y="1151" class="nt">分类，仅 this 与 this 的直接字段</text>
+  <text x="1198" y="1170" class="nt">读放行（后者由既有 fixContext</text>
+  <text x="1198" y="1189" class="nt">回填，idworker 实证 10/10 成功）。</text>
+  <text x="1198" y="1217" class="nh">效率来源</text>
+  <text x="1198" y="1241" class="nt">非断点步骤省掉的是「变异循环</text>
+  <text x="1198" y="1260" class="nt">＋多次 LLM 调用」，而非仅省</text>
+  <text x="1198" y="1279" class="nt">一次调用；R1 步骤连一次 LLM</text>
+  <text x="1198" y="1298" class="nt">都不需要。断点比例决定收益</text>
+  <text x="1198" y="1317" class="nt">上限，故须按工程分别测量。</text>
+
+  <rect x="1180" y="1376" width="290" height="146" rx="8" class="side"/>
+  <text x="1198" y="1404" class="nh">埋点用途</text>
+  <text x="1198" y="1428" class="nt">断点率、跳过率、升级率、</text>
+  <text x="1198" y="1447" class="nt">每步 LLM 调用数与耗时，</text>
+  <text x="1198" y="1466" class="nt">由 run_projection_experiment.sh</text>
+  <text x="1198" y="1485" class="nt">一键重跑并汇总为 CSV。</text>
+  <text x="1198" y="1509" class="nt">升级率是分类误判的直接度量。</text>
+</svg>
